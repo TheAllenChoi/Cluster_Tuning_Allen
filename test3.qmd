@@ -1,5 +1,5 @@
 ---
-title: "test3"
+title: "Test_2_Species"
 format: html
 editor: visual
 ---
@@ -17,41 +17,23 @@ set.seed(599)
 library(tidyclust)
 library(tidyverse)
 library(tidymodels)
-# For a given k, we want to resample j times. 
-# We need an index of every single observation in order to be able to compare consistently
-# across all resamples.
+library(plotly)
 
-# set up k = 3 for initial testing
 data <- penguins
+# data <- penguins |> 
+#   filter(species != "Chinstrap")
 
 # Remove NA values before passing in since we can't handle NA values rn lmao
 data <- data |> 
   drop_na() |> 
   mutate(bill_length_mm = scale(bill_length_mm),
          flipper_length_mm = scale(flipper_length_mm))
-
-
-# For a given k:
-  # Add an index column to keep track of observations even after shuffling
-  # Iterate over the resample amounts (from 1:j)
-    # first_data <- Randomly select 80% of the data
-    # clust_assignment <- clust(first_data)
-    
-    # Convert clust_assignment to matrix form (this is the difficult part)
-      # The matrix is NA if the observation is being compared with itself (i = j)
-      # The matrix is symmetrical
-      # The value is equal to 1 if the observation is within the same cluster
-      # The value is equal to -1 if the observation is not in the same cluster
-      # The value is equal to 0 if either observation does not exist in that resample.
-  
-# Variable init
-statistic <- data.frame()
 ```
 
 ```{r}
 resample_function <- function(data = data,
                               k = 3,
-                              number_of_resamples = 5,
+                              number_of_resamples = 10,
                               proportion_resample = 0.8) {
   data <- data |> 
     drop_na()
@@ -80,11 +62,7 @@ resample_function <- function(data = data,
     for (n in 1:(nrow(intermediate) - 1)) {
       for (m in (n + 1):nrow(intermediate)) {
         # if the points are the same then set to NA
-        if (intermediate[n, ]$index == intermediate[m, ]$index) {
-  
-          # problem here
-          result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- NA
-        } else {
+        if (intermediate[n, ]$index != intermediate[m, ]$index) {
           # get first pointer cluster
           first <- intermediate[n, ]$cluster
           # get second pointer cluster
@@ -98,14 +76,9 @@ resample_function <- function(data = data,
             result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
           }
         }
-
-
       }
     }
-    for (i in 1:nrow(result_matrix)) {
-      result_matrix[i, i] <- NA
-    }
-    result_matrix[lower.tri(result_matrix)] <- NA
+    result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
     results[[num_resample]] <- result_matrix
   }
   return(results)
@@ -119,29 +92,64 @@ final_sum_matrix <- data.frame()
 
 # k = 2
 ```{r}
-res <- resample_function(data = data, number_of_resamples = 10, k = 2)
-final <- res |> 
-  reduce(`+`) |> 
-  abs()
+res_2 <- resample_function(data = data, number_of_resamples = 15, k = 2)
+final_2 <- res_2 |> 
+  reduce(`+`)
 
-final <- as.vector(final)
+image(final_2)
+# final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
+#   mutate(k = 2))
 
-final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
-  mutate(k = 2))
+plot <- data.frame(final_2) |> 
+  rownames_to_column("Index") |> 
+  pivot_longer(-Index) |> 
+  mutate(Index = factor(Index, levels = 1:nrow(final_2)),
+         name = factor(name, levels = paste0("X", 1:nrow(final_2)))) |> 
+  ggplot(aes(x = Index, y = name)) +
+  geom_tile(aes(fill = value))
+  
+
+ggplotly(plot)
 ```
+```{r}
+data[68,]
+
+ggplotly(
+data |> 
+  rowid_to_column() |> 
+  ggplot(aes(x = bill_length_mm, y = flipper_length_mm,
+             color = species,
+             fill = as.factor(rowid))) +
+  geom_jitter()
+)
+```
+
 
 # k = 3
 ```{r}
-res <- resample_function(data = data, number_of_resamples = 20, k = 3)
-final <- res |> 
-  reduce(`+`) |> 
-  abs()
+res_3 <- resample_function(data = data, number_of_resamples = 10, k = 3)
+final_3 <- res_3 |> 
+  reduce(`+`)
 
-final <- as.vector(final)
+# final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
+#   mutate(k = 3))
 
-final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
-  mutate(k = 3))
+data |> 
+  ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
+  geom_point()
+image(final_3)
 
+
+plot <- data.frame(final_3) |> 
+  rownames_to_column("Index") |> 
+  pivot_longer(-Index) |> 
+  mutate(Index = factor(Index, levels = 1:nrow(final_2)),
+         name = factor(name, levels = paste0("X", 1:nrow(final_2)))) |> 
+  ggplot(aes(x = Index, y = name)) +
+  geom_tile(aes(fill = value))
+  
+
+ggplotly(plot)
 
 ```
 
@@ -202,6 +210,7 @@ data |>
              color = species)) +
   geom_point()
 ```
+
 ```{r}
 new_d <- penguins
 new_d$index <- 1:nrow(new_d)
