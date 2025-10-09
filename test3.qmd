@@ -18,6 +18,11 @@ library(tidyclust)
 library(tidyverse)
 library(tidymodels)
 library(plotly)
+library(foreach)
+library(doParallel)
+
+# Change this to lower if computer is unhappy
+registerDoParallel(cores = detectCores() / 2)
 
 data <- penguins
 # data <- penguins |> 
@@ -35,13 +40,16 @@ resample_function <- function(data = data,
                               k = 3,
                               number_of_resamples = 10,
                               proportion_resample = 0.8) {
+  start <- Sys.time()
   data <- data |> 
     drop_na()
+  # data <- data[sample(nrow(data)), ]
   data$index <- 1:nrow(data)
   results <- list()
   
   # For loop
-  for (num_resample in 1:number_of_resamples) {
+  results <- foreach(i = 1:number_of_resamples,
+          .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
     result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
     # 80% resample
     random_sample <- data |> 
@@ -79,8 +87,10 @@ resample_function <- function(data = data,
       }
     }
     result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
-    results[[num_resample]] <- result_matrix
+    result_matrix
   }
+  end = Sys.time()
+  print(paste0("Number of seconds is: ", end - start))
   return(results)
 }
 ```
@@ -92,13 +102,15 @@ final_sum_matrix <- data.frame()
 
 # k = 2
 ```{r}
-res_2 <- resample_function(data = data, number_of_resamples = 15, k = 2)
+res_2 <- resample_function(data = data, number_of_resamples = 10, k = 2)
 final_2 <- res_2 |> 
   reduce(`+`)
+final <- final_2 |> 
+  as.vector()
 
 image(final_2)
-# final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
-#   mutate(k = 2))
+final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
+  mutate(k = 2))
 
 plot <- data.frame(final_2) |> 
   rownames_to_column("Index") |> 
@@ -110,7 +122,29 @@ plot <- data.frame(final_2) |>
   
 
 ggplotly(plot)
+a <- lapply(res_2, abs)
+
+b <- a |> 
+  reduce(`+`)
+
+c <- res_2 |> 
+  reduce(`+`)
+
+d <- c / b
+
+
+image(d)
+
+d <- as.vector(d)
+d <- d[!is.na(d)]
+
+mean(d)
+
+sd(d)
+
+
 ```
+46.38 seconds on 10 resamples on penguins data with no NA with 80% resample prop
 ```{r}
 data[68,]
 
@@ -131,8 +165,11 @@ res_3 <- resample_function(data = data, number_of_resamples = 10, k = 3)
 final_3 <- res_3 |> 
   reduce(`+`)
 
-# final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
-#   mutate(k = 3))
+final <- final_3 |> 
+  as.vector()
+
+final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
+  mutate(k = 3))
 
 data |> 
   ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
@@ -151,15 +188,59 @@ plot <- data.frame(final_3) |>
 
 ggplotly(plot)
 
+
+a <- lapply(res_3, abs)
+
+b <- a |> 
+  reduce(`+`)
+
+c <- res_3 |> 
+  reduce(`+`)
+
+d <- c / b
+
+
+image(d)
+
+d <- as.vector(d)
+d <- d[!is.na(d)]
+
+mean(d)
+
+sd(d)
+
 ```
 
 # k = 4
 ```{r}
-res <- resample_function(data = data, number_of_resamples = 20, k = 4)
-final <- res |> 
-  reduce(`+`) |> 
-  as.vector() |> 
-  abs()
+res_4 <- resample_function(data = data,
+                           number_of_resamples = 10, k = 4)
+final_4 <- res_4 |> 
+  reduce(`+`)
+
+final <- final_4 |> 
+  as.vector()
+
+
+a <- lapply(res_4, abs)
+
+b <- a |> 
+  reduce(`+`)
+
+c <- res_4 |> 
+  reduce(`+`)
+
+d <- c / b
+
+
+image(d)
+
+d <- as.vector(d)
+d <- d[!is.na(d)]
+
+mean(d)
+
+sd(d)
 
 # omg, flashback to zero-inflated poisson?????
 
@@ -167,17 +248,37 @@ final <- res |>
 final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
   mutate(k = 4))
 
-res <- resample_function(data = data, number_of_resamples = 20, k = 5)
-final <- res |> 
-  reduce(`+`) |> 
-  as.vector() |> 
-  abs()
-# omg, flashback to zero-inflated poisson?????
+res_5 <- resample_function(data = data,
+                           number_of_resamples = 10, k = 5)
+final_5 <- res_5 |> 
+  reduce(`+`)
 
+final <- final_5 |> 
+  as.vector()
 
 final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
   mutate(k = 5))
 
+
+a <- lapply(res_5, abs)
+
+b <- a |> 
+  reduce(`+`)
+
+c <- res_5 |> 
+  reduce(`+`)
+
+d <- c / b
+
+
+image(d)
+
+d <- as.vector(d)
+d <- d[!is.na(d)]
+
+mean(d)
+
+sd(d)
 ```
 
 ```{r}
@@ -235,6 +336,29 @@ random_sample |>
   ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
   geom_point()
 ```
+
+```{r}
+a <- lapply(res_2, abs)
+
+b <- a |> 
+  reduce(`+`)
+
+c <- res_2 |> 
+  reduce(`+`)
+
+d <- c / b
+
+
+image(d)
+
+d <- as.vector(d)
+d <- d[!is.na(d)]
+
+mean(d)
+
+sd(d)
+```
+
 
 
 ## Experiments
