@@ -38,8 +38,8 @@ data <- data |>
 ```{r}
 resample_function <- function(data = data,
                               k = 3,
-                              number_of_resamples = 50,
-                              proportion_resample = 0.8) {
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9) {
   start <- Sys.time()
   data <- data |> 
     drop_na()
@@ -49,7 +49,9 @@ resample_function <- function(data = data,
   
   # For loop
   results <- foreach(i = 1:number_of_resamples,
-          .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+    # Reproducibility over parallel
+    set.seed(599 + i)
     result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
     # 80% resample
     random_sample <- data |> 
@@ -100,8 +102,8 @@ final_sum_matrix <- data.frame()
 final_mean_matrix <- data.frame()
 ```
 
-
 # k = 2
+
 ```{r}
 res_2 <- resample_function(data = data, k = 2)
 final_2 <- res_2 |> 
@@ -159,7 +161,9 @@ e <- d[!(d %in% c(1, -1))]
 mean(e)
 sd(e)
 ```
+
 46.38 seconds on 10 resamples on penguins data with no NA with 80% resample prop
+
 ```{r}
 data[68,]
 
@@ -173,8 +177,8 @@ data |>
 )
 ```
 
-
 # k = 3
+
 ```{r}
 res_3 <- resample_function(data = data, k = 3)
 final_3 <- res_3 |> 
@@ -242,6 +246,7 @@ sd(e)
 ```
 
 # k = 4
+
 ```{r}
 res_4 <- resample_function(data = data,
                            k = 4)
@@ -345,6 +350,7 @@ final_sum_matrix |>
   geom_histogram() +
   facet_wrap(~k)
 ```
+
 ```{r}
 unique(final_sum_matrix$k)
 final_mean_matrix |> 
@@ -352,7 +358,6 @@ final_mean_matrix |>
   geom_histogram() +
   facet_wrap(~k)
 ```
-
 
 ```{r}
 res <- final_sum_matrix |> 
@@ -430,7 +435,6 @@ final_mean_matrix |>
   mutate(value = abs(value)) |> 
   summarize(total = sum((1 - value)^2))
 ```
-
 
 ## Experiments
 
