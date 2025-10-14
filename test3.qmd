@@ -353,10 +353,12 @@ final_sum_matrix |>
 
 ```{r}
 unique(final_sum_matrix$k)
-final_mean_matrix |> 
+
+ggplotly(final_mean_matrix |> 
   ggplot(aes(x = d)) +
   geom_histogram() +
   facet_wrap(~k)
+)
 ```
 
 ```{r}
