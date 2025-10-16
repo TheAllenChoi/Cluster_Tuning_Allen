@@ -6,29 +6,34 @@ format:
     code-tools: true
     embed-resources: true
 editor: visual
-
 ---
+
 Note: Closely follows the algorithm set in Ben-Hur and Elisseeff paper: A stability based method for discovering structure in clustered data (2002)
 
 ## Imports
+
 ```{r}
 #| label: imports
+#| message: false
 library(tidyclust)
 library(tidyverse)
 library(tidymodels)
 library(plotly)
 library(foreach)
 library(doParallel)
+registerDoParallel(cores = detectCores() - 1)
 set.seed(599)
 ```
 
 ## Resample Function
+
 ```{r}
 #| label: resample-function
 resample_function <- function(data = data,
                               k = 3,
                               number_of_resamples = 15,
-                              proportion_resample = 0.9) {
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
   start <- Sys.time()
   data <- data |> 
     drop_na()
@@ -40,7 +45,7 @@ resample_function <- function(data = data,
   results <- foreach(i = 1:number_of_resamples,
                      .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
     # Reproducibility over parallel
-    set.seed(599 + i)
+    set.seed(starting_seed + i)
     result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
     # 80% resample
     random_sample <- data |> 
@@ -81,18 +86,63 @@ resample_function <- function(data = data,
     result_matrix
   }
   end = Sys.time()
-  print(paste0("Number of seconds is: ", end - start))
+  print(paste0("Number of seconds taken is: ", end - start))
   return(results)
 }
 ```
 
-## For one k, return the set of mean matrices
+## For one k, return the mean matrix
+
 ```{r}
 one_k_mean_matrix <- function(data = data,
-                              k = k) {
-  result <- resample_function(data = data, k = k)
+                              k = k,
+                              starting_seed = 599) {
+  result <- resample_function(data = data, k = k, starting_seed = starting_seed)
+  
+  # Absolute value the entire matrix, for all matrices
   absolute_sum <- lapply(result, abs)
   
+  # Get the sum of absolute values in the final matrix
+  absolute_final <- absolute_sum |> 
+    reduce(`+`)
+  
+  # Get the sum of values in the final matrix
+  numerator <- result |> 
+    reduce(`+`)
+  
+  # Returns the matrix of zero-removed means. 
+  # The zero-removed mean is the sum over the (length - the number of zeroes).
+  # The length - the number of zeroes is equivalent to the sum over absolute values
+  return(numerator / absolute_final)
 }
+```
+
+## For one mean matrix, return a squared metric distance from 1.
+
+```{r}
+squared_distance_from_one <- function(mean_matrix = mean_matrix) {
+  res_vec <- as.vector(mean_matrix)
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  return(sum((1 - res_vec)^2))
+}
+```
+
+
+```{r}
+data <- penguins
+data <- data |> 
+  drop_na() |> 
+  mutate(bill_length_mm = scale(bill_length_mm),
+         flipper_length_mm = scale(flipper_length_mm))
+
+m <- one_k_mean_matrix(data = data, k = 3)
+```
+```{r}
+list_res <- lapply(c(2:5), function(x) one_k_mean_matrix(data = data,
+                                                          k = x))
+```
+
+```{r}
+lapply(list_res, function(x) squared_distance_from_one(x))
 ```
 
