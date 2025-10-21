@@ -52,8 +52,12 @@ resample_function <- function(data = data,
       filter(index %in% sample(index, proportion_resample * nrow(data)))
     
     # Run k-means on resample
-    kmeans <- k_means(num_clusters = k) |> 
-      fit(~ bill_length_mm + flipper_length_mm,
+    # kmeans <- k_means(num_clusters = k) |>
+    #   fit(~ bill_length_mm + flipper_length_mm,
+    #       data = random_sample)
+
+    kmeans <- k_means(num_clusters = k) |>
+      fit(~ X1 + X2,
           data = random_sample)
     
     intermediate <- data.frame(random_sample$index,
@@ -127,7 +131,6 @@ squared_distance_from_one <- function(mean_matrix = mean_matrix) {
 }
 ```
 
-
 ```{r}
 data <- penguins
 data <- data |> 
@@ -135,8 +138,9 @@ data <- data |>
   mutate(bill_length_mm = scale(bill_length_mm),
          flipper_length_mm = scale(flipper_length_mm))
 
-m <- one_k_mean_matrix(data = data, k = 3)
+# m <- one_k_mean_matrix(data = data, k = 3)
 ```
+
 ```{r}
 list_res <- lapply(c(2:5), function(x) one_k_mean_matrix(data = data,
                                                           k = x))
@@ -144,5 +148,112 @@ list_res <- lapply(c(2:5), function(x) one_k_mean_matrix(data = data,
 
 ```{r}
 lapply(list_res, function(x) squared_distance_from_one(x))
+```
+
+```{r}
+image_helper <- function(list_res = list_res) {
+  lapply(list_res, function(x) image(x))
+}
+```
+
+```{r}
+image_helper(list_res)
+```
+
+# Test with random data
+
+```{r}
+set.seed(599)
+random_data <- data.frame(cbind(runif(100), runif(100)))
+random_data <- random_data |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+random_data |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point() +
+  theme_minimal()
+
+
+```
+
+```{r}
+list_res_unif <- lapply(c(2:5), function(x) one_k_mean_matrix(data = random_data,
+                                                          k = x))
+lapply(list_res_unif, function(x) squared_distance_from_one(x))
+```
+
+```{r}
+kmeans <- k_means(num_clusters = 3) |>
+      fit(~ X1 + X2,
+          data = random_data)
+
+kmeans$fit$cluster
+
+random_data |> 
+  ggplot(aes(x = X1, y = X2, color = as.factor(kmeans$fit$cluster))) +
+  geom_point() +
+  theme_minimal()
+```
+
+```{r}
+image_helper(list_res_unif)
+```
+
+# Test with random normal variables
+
+```{r}
+random_normal <- rbind(data.frame(cbind(rnorm(50), rnorm(50))),
+                       data.frame(cbind(rnorm(50, mean = 0 + 5), rnorm(50, mean = 0 + 5))))
+
+random_normal <- random_normal |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+random_normal |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point()
+
+
+```
+
+```{r}
+list_res_norm <- lapply(c(2:5), function(x) one_k_mean_matrix(data = random_normal,
+                                                          k = x))
+lapply(list_res_norm, function(x) squared_distance_from_one(x))
+```
+
+```{r}
+image_helper(list_res_norm)
+```
+
+```{r}
+random_normal_2 <- rbind(data.frame(cbind(rnorm(50), rnorm(50))),
+                       data.frame(cbind(rnorm(50, mean = 0 + 3), rnorm(50, mean = 0 + 3))),
+                       data.frame(cbind(rnorm(50, mean = 3), rnorm(50, mean = 0 - 4))))
+
+random_normal_2 <- random_normal_2 |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+random_normal_2 |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point()
+
+```
+
+```{r}
+list_res_normal_2 <- lapply(c(2:5), function(x) one_k_mean_matrix(data = random_normal_2,
+                                                          k = x))
+lapply(list_res_normal_2, function(x) squared_distance_from_one(x))
+```
+
+```{r}
+image_helper(list_res_normal_2)
+```
+
+
+```{r}
+
 ```
 
