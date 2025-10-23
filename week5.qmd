@@ -1,0 +1,101 @@
+---
+title: "week5"
+format:
+  html:
+    code-fold: true
+    code-tools: true
+embed-resources: true
+---
+
+```{r}
+#| message: false
+
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+
+source("functions.R")
+```
+
+```{r}
+image_helper <- function(list_res = list_res) {
+  lapply(list_res, function(x) image(x))
+}
+```
+
+
+```{r}
+# get prop 1 and -1 from set of matrices
+H_function <- function(list_of_results = list_of_results) {
+  result <- lapply(list_of_results, function(x) {
+    vec <- x |>
+      as.vector() |>
+      na.omit()
+    c(sum(vec == 1), sum(vec == -1))})
+  result <- as.data.frame(result)
+  colnames(result) <- c(1:ncol(result))
+  return(result |> 
+    t() |> 
+    data.frame() |> 
+    rename("1" = X1, 
+           "-1" = X2) |> 
+    rownames_to_column("Index") |> 
+    pivot_longer(cols = -Index))
+}
+wrapper_func <- function(data = data) {
+  print(data |> 
+    ggplot(aes(x = X1, y = X2)) +
+    geom_point() +
+    theme_minimal() +
+    ggtitle("Plot of the data"))
+    
+  store_res <- lapply(c(2:10), function(x) one_k_mean_matrix(data = data,
+                                                            k = x))
+  scores <- t(data.frame(lapply(store_res, function(x) squared_distance_from_one(x)))) |> 
+    data.frame(row.names = NULL) |> 
+    mutate(cluster = row_number() + 1)
+  
+  colnames(scores) <- c("Score", "Cluster")
+  print(scores)
+  
+  H_function(store_res) |> 
+    ggplot(aes(x = Index, y = value, fill = name)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    ggtitle("Plot of 1 and -1 after removing all values that are not in c(1, -1)")
+}
+```
+
+```{r}
+random_normal <- rbind(data.frame(cbind(rnorm(50, sd = 0.1), rnorm(50, sd = 0.1))),
+                       data.frame(cbind(rnorm(50, mean = 5, sd = 0.1), rnorm(50, mean = 5, sd = 0.1)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+random_normal_1 <- rbind(data.frame(cbind(rnorm(50, sd = 0.1), rnorm(50, sd = 0.1))),
+                       data.frame(cbind(rnorm(50, mean = 2.5, sd = 0.1), rnorm(50, mean = 2.5, sd = 0.1))),
+                       data.frame(cbind(rnorm(50, mean = 5, sd = 0.1), rnorm(50, mean = 5, sd = 0.1)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+random_unif <- data.frame(cbind(runif(100), runif(100))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+```
+
+```{r}
+wrapper_func(data = random_normal)
+```
+```{r}
+wrapper_func(data = random_unif)
+```
+```{r}
+wrapper_func(data = random_normal_1)
+```
+
+
