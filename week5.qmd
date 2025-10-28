@@ -47,7 +47,8 @@ H_function <- function(list_of_results = list_of_results) {
     rownames_to_column("Index") |> 
     pivot_longer(cols = -Index))
 }
-wrapper_func <- function(data = data) {
+wrapper_func <- function(data = data,
+                         starting_seed = 599) {
   print(data |> 
     ggplot(aes(x = X1, y = X2)) +
     geom_point() +
@@ -55,7 +56,8 @@ wrapper_func <- function(data = data) {
     ggtitle("Plot of the data"))
     
   store_res <- lapply(c(2:10), function(x) one_k_mean_matrix(data = data,
-                                                            k = x))
+                                                             starting_seed = 599,
+                                                             k = x))
   scores <- t(data.frame(lapply(store_res, function(x) squared_distance_from_one(x)))) |> 
     data.frame(row.names = NULL) |> 
     mutate(cluster = row_number() + 1)
@@ -72,30 +74,23 @@ wrapper_func <- function(data = data) {
 ```
 
 ```{r}
-random_normal <- rbind(data.frame(cbind(rnorm(50, sd = 0.1), rnorm(50, sd = 0.1))),
-                       data.frame(cbind(rnorm(50, mean = 5, sd = 0.1), rnorm(50, mean = 5, sd = 0.1)))) |> 
+set.seed(100)
+random_normal <- data.frame(cbind(rnorm(50), rnorm(50))) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 
-random_normal_1 <- rbind(data.frame(cbind(rnorm(50, sd = 0.1), rnorm(50, sd = 0.1))),
-                       data.frame(cbind(rnorm(50, mean = 2.5, sd = 0.1), rnorm(50, mean = 2.5, sd = 0.1))),
-                       data.frame(cbind(rnorm(50, mean = 5, sd = 0.1), rnorm(50, mean = 5, sd = 0.1)))) |> 
-  mutate(X1 = scale(X1),
-         X2 = scale(X2))
 
-random_unif <- data.frame(cbind(runif(100), runif(100))) |> 
+random_unif <- data.frame(cbind(runif(50), runif(50))) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 ```
 
 ```{r}
-wrapper_func(data = random_normal)
+wrapper_func(data = random_normal, )
 ```
 ```{r}
 wrapper_func(data = random_unif)
 ```
-```{r}
-wrapper_func(data = random_normal_1)
-```
+
 
 
