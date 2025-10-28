@@ -28,7 +28,6 @@ image_helper <- function(list_res = list_res) {
 }
 ```
 
-
 ```{r}
 # get prop 1 and -1 from set of matrices
 H_function <- function(list_of_results = list_of_results) {
@@ -36,16 +35,11 @@ H_function <- function(list_of_results = list_of_results) {
     vec <- x |>
       as.vector() |>
       na.omit()
-    c(sum(vec == 1), sum(vec == -1))})
-  result <- as.data.frame(result)
-  colnames(result) <- c(1:ncol(result))
-  return(result |> 
-    t() |> 
-    data.frame() |> 
-    rename("1" = X1, 
-           "-1" = X2) |> 
-    rownames_to_column("Index") |> 
-    pivot_longer(cols = -Index))
+    c("One" = sum(vec == 1), "Neg_One" = sum(vec == -1))})
+  result <- data.frame(result)
+  colnames(result) <- 2:(ncol(result) + 1)
+  return(data.frame(t(result)) |> 
+    rownames_to_column("Cluster_Num"))
 }
 wrapper_func <- function(data = data,
                          starting_seed = 599) {
@@ -66,31 +60,140 @@ wrapper_func <- function(data = data,
   print(scores)
   
   H_function(store_res) |> 
-    ggplot(aes(x = Index, y = value, fill = name)) +
+    pivot_longer(cols = -Cluster_Num) |> 
+    mutate(Cluster_Num = factor(Cluster_Num, levels = c(2:10), ordered = TRUE)) |> 
+    ggplot(aes(x = Cluster_Num, y = value, fill = name)) +
     geom_bar(stat = "identity", position = "dodge") +
     theme_minimal() +
     ggtitle("Plot of 1 and -1 after removing all values that are not in c(1, -1)")
 }
+
+null_multiple <- function(data = data,
+                          starting_seed = 599,
+                          number_of_resamples = 15,
+                          n = 5,
+                          max_k = 5) {
+  lapply(c(1:n), function(i) {
+    temp_seed <- starting_seed * i
+    store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  starting_seed = temp_seed,
+                                                                  k = x,
+                                                                  number_of_resamples = number_of_resamples))
+    H_function(store_res)
+  }) |> 
+    reduce(`rbind`)
+}
+
+null_multiple_random_unif_init <- function(starting_seed = 599,
+                                          number_of_resamples = 15,
+                                          n = 5,
+                                          max_k = 5) {
+  lapply(c(1:n), function(i) {
+    temp_seed <- starting_seed * i
+    data <- data.frame(cbind(runif(100), runif(100)))
+    store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  starting_seed = temp_seed,
+                                                                  k = x,
+                                                                  number_of_resamples = number_of_resamples))
+    H_function(store_res)
+  }) |> 
+    reduce(`rbind`)
+}
+
+null_multiple_random_normal_init <- function(starting_seed = 599,
+                                          number_of_resamples = 15,
+                                          n = 5,
+                                          max_k = 5) {
+  lapply(c(1:n), function(i) {
+    temp_seed <- starting_seed * i
+    data <- data.frame(cbind(rnorm(100), rnorm(100)))
+    store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  starting_seed = temp_seed,
+                                                                  k = x,
+                                                                  number_of_resamples = number_of_resamples))
+    H_function(store_res)
+  }) |> 
+    reduce(`rbind`)
+}
+
 ```
 
 ```{r}
 set.seed(100)
-random_normal <- data.frame(cbind(rnorm(50), rnorm(50))) |> 
-  mutate(X1 = scale(X1),
-         X2 = scale(X2))
+random_normal <- data.frame(cbind(rnorm(100), rnorm(100)))
 
 
-random_unif <- data.frame(cbind(runif(50), runif(50))) |> 
-  mutate(X1 = scale(X1),
-         X2 = scale(X2))
+random_unif <- data.frame(cbind(runif(100), runif(100)))
+```
+
+15 Clusters, 30 n, with 20 resamples on a random uniform 
+```{r}
+# set.seed(599)
+# final_result <- null_multiple(data = random_unif,
+#                 max_k = 16,
+#                 n = 30,
+#                 number_of_resamples = 20)
+# write.csv(final_result, file = "uniform_16k_30n_20r.csv")
+```
+
+15 Clusters, 50 times, with 20 resamples on a random Normal 
+```{r}
+set.seed(599)
+final_result_2 <- null_multiple(data = random_normal,
+                max_k = 16,
+                n = 30,
+                number_of_resamples = 20)
+write.csv(final_result_2, file = "normal_16k_30n_20r.csv")
 ```
 
 ```{r}
-wrapper_func(data = random_normal, )
+wrapper_func(data = random_normal)
 ```
 ```{r}
-wrapper_func(data = random_unif)
+final_result |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM") +
+  theme_minimal()
+
+final_result_2 |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  theme_minimal()
+
+final_result |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM") +
+  theme_minimal()
+
+final_result_2 |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  theme_minimal()
 ```
+
+## Randomize the uniform distribution after each rerun... why? Because we don't want results to be dependent on initial start. 
+```{r}
+set.seed(599)
+final_result_init <- null_multiple_random_unif_init(max_k = 16,
+                                                    n = 30,
+                                                    number_of_resamples = 20)
+write.csv(final_result_init, file = "unif_16k_30n_20r_random_init.csv")
+```
+
+
+```{r}
+set.seed(599)
+final_result_2_init <- null_multiple_random_normal_init(max_k = 16,
+                                                        n = 30,
+                                                        number_of_resamples = 20)
+write.csv(final_result_2_init, file = "normal_16k_30n_20r_random_init.csv")
+```
+
+
 
 
 
