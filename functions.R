@@ -64,8 +64,14 @@ resample_function <- function(data = data,
 
 one_k_mean_matrix <- function(data = data,
                               k = k,
-                              starting_seed = 599) {
-  result <- resample_function(data = data, k = k, starting_seed = starting_seed)
+                              starting_seed = 599,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9) {
+  result <- resample_function(data = data,
+                              k = k,
+                              starting_seed = starting_seed,
+                              number_of_resamples = number_of_resamples,
+                              proportion_resample = proportion_resample)
 
   # Absolute value the entire matrix, for all matrices
   absolute_sum <- lapply(result, abs)
