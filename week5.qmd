@@ -176,24 +176,35 @@ random_unif <- data.frame(cbind(runif(100), runif(100)))
 
 ## Randomize the uniform distribution after each rerun... why? Because we don't want results to be dependent on initial start. 
 ```{r}
-set.seed(599)
-final_result_init <- null_multiple_random_unif_init(max_k = 16,
-                                                    n = 30,
-                                                    number_of_resamples = 20)
-write.csv(final_result_init, file = "unif_16k_30n_20r_random_init.csv")
+# set.seed(599)
+# final_result_init <- null_multiple_random_unif_init(max_k = 16,
+#                                                     n = 30,
+#                                                     number_of_resamples = 20)
+# write.csv(final_result_init, file = "unif_16k_30n_20r_random_init.csv")
 ```
 
 
 ```{r}
-set.seed(599)
-final_result_2_init <- null_multiple_random_normal_init(max_k = 16,
-                                                        n = 30,
-                                                        number_of_resamples = 20)
-write.csv(final_result_2_init, file = "normal_16k_30n_20r_random_init.csv")
+# set.seed(599)
+# final_result_2_init <- null_multiple_random_normal_init(max_k = 16,
+#                                                         n = 30,
+#                                                         number_of_resamples = 20)
+# write.csv(final_result_2_init, file = "normal_16k_30n_20r_random_init.csv")
 ```
 
 
 ## Read in Saved data
+### Plot of the randomized data
+```{r}
+random_normal |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point()
+
+random_unif |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point()
+```
+
 ```{r}
 ## Randomly select a uniform/normal, and then use that same dataset with random starting conditions.
 final_result <- read_csv("uniform_16k_30n_20r.csv")
@@ -203,24 +214,28 @@ final_result |>
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM") +
+  scale_y_continuous(limits = c(0, 2000)) +
   theme_minimal()
 
 final_result_2 |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  scale_y_continuous(limits = c(0, 2000)) +
   theme_minimal()
 
 final_result |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM") +
+  scale_y_continuous(limits = c(0, 5000)) +
   theme_minimal()
 
 final_result_2 |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  scale_y_continuous(limits = c(0, 5000)) +
   theme_minimal()
 ```
 
@@ -229,31 +244,40 @@ final_result_2 |>
 final_result_init <- read_csv("unif_16k_30n_20r_random_init.csv")
 final_result_2_init <- read_csv("normal_16k_30n_20r_random_init.csv")
 
-final_result |> 
+final_result_init |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM
-          (New Generated Simul. Data per n)") +
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 2000)) +
   theme_minimal()
 
-final_result_2 |> 
+final_result_2_init |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
   geom_boxplot() +
-  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 2000)) +
   theme_minimal()
 
-final_result |> 
+final_result_init |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
   geom_boxplot() +
-  ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM") +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random UNIFORM
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 5000)) +
   theme_minimal()
 
-final_result_2 |> 
+final_result_2_init |> 
   ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
   geom_boxplot() +
-  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL") +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random NORMAL
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 5000)) +
   theme_minimal()
+
+# Note... due to the way that uniform is constrained between 0 and 1, I think it
+# could cause weird behavior at cluster = 4 due to the 4 corners of the distributed data...
+
 ```
-
-
 
