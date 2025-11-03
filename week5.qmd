@@ -378,7 +378,7 @@ write.csv(final_result_init, file = "data/unif_16k_30n_20r_random_init_3d.csv")
 ```{r}
 final_result_init <- read_csv("data/unif_16k_30n_20r_random_init_3d.csv")
 final_result_init |> 
-  ggplot(aes(x = factor(Cluster_Num, levels = c(1, 2, 4, 7, 8, 9), ordered = TRUE), y = One)) +
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random 3d UNIFORM 
           (Generates New Simulated Data per n)") +
@@ -386,7 +386,7 @@ final_result_init |>
   theme_minimal()
 
 final_result_init |> 
-  ggplot(aes(x = factor(Cluster_Num, levels = c(1, 2, 4, 7, 8, 9), ordered = TRUE), y = Neg_One)) +
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = Neg_One)) +
   geom_boxplot() +
   ggtitle("15 Clusters, 30 n, with 20 resamples on a random 3d UNIFORM
           (Generates New Simulated Data per n)") +
