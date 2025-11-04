@@ -431,3 +431,100 @@ source("functions.R")
 resample_function(data = penguins, formula = ~ flipper_length_mm + bill_length_mm)
 ```
 
+```{r}
+t <- mvrnorm(n = 200,
+            mu = c(0, 0, 0),
+            Sigma = matrix(c(1, 0, 0,
+                             0, 1, 0,
+                             0, 0, 1), ncol = 3))
+
+data <- data.frame(t)
+
+null_mvn_3d <- function(starting_seed = 599,
+                        number_of_resamples = 15,
+                        n = 5,
+                        max_k = 5) {
+  lapply(c(1:n), function(i) {
+    temp_seed <- starting_seed * i
+    set.seed(temp_seed)
+    t <- mvrnorm(n = 100,
+            mu = c(0, 0, 0),
+            Sigma = matrix(c(1, 0, 0,
+                             0, 1, 0,
+                             0, 0, 1), ncol = 3))
+
+    data <- data.frame(t)
+    store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  formula = ~ X1 + X2 + X3,
+                                                                  starting_seed = temp_seed,
+                                                                  k = x,
+                                                                  number_of_resamples = number_of_resamples))
+    H_function(store_res)
+  }) |> 
+    reduce(`rbind`)
+}
+
+final_result_init <- null_mvn_3d(max_k = 16,
+                                n = 30,
+                                number_of_resamples = 20)
+write.csv(final_result_init, file = "data/mvnorm_3d_16k_30n_20r.csv")
+```
+```{r}
+final_result_init |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random 3d NORMAL 
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 2000)) +
+  theme_minimal()
+```
+
+```{r}
+t <- mvrnorm(n = 200,
+            mu = c(0, 0, 0),
+            Sigma = matrix(c(1, 0, 0,
+                             0, 1, 0,
+                             0, 0, 1), ncol = 3))
+
+data <- data.frame(t)
+
+null_mvn_3d <- function(starting_seed = 599,
+                        number_of_resamples = 15,
+                        n = 5,
+                        max_k = 5) {
+  lapply(c(1:n), function(i) {
+    temp_seed <- starting_seed * i
+    set.seed(temp_seed)
+    t <- mvrnorm(n = 100,
+            mu = rep(0, 3),
+            Sigma = diag(3))
+
+    data <- data.frame(t)
+    store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  formula = ~ .,
+                                                                  starting_seed = temp_seed,
+                                                                  k = x,
+                                                                  number_of_resamples = number_of_resamples))
+    H_function(store_res)
+  }) |> 
+    reduce(`rbind`)
+}
+
+final_result_init <- null_mvn_3d(max_k = 16,
+                                  n = 30,
+                                  number_of_resamples = 20)
+
+
+```
+
+```{r}
+final_result_init |> 
+  ggplot(aes(x = factor(Cluster_Num, levels = 2:16, ordered = TRUE), y = One)) +
+  geom_boxplot() +
+  ggtitle("15 Clusters, 30 n, with 20 resamples on a random 3d NORMAL 
+          (Generates New Simulated Data per n)") +
+  scale_y_continuous(limits = c(0, 2000)) +
+  theme_minimal()
+```
+```
+
