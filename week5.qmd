@@ -16,6 +16,7 @@ library(tidymodels)
 library(plotly)
 library(foreach)
 library(doParallel)
+library(MASS)
 registerDoParallel(cores = detectCores() - 1)
 set.seed(599)
 
@@ -346,20 +347,49 @@ resample_function <- function(data = data,
   tictoc::toc()
   return(results)
 }
+
+one_k_mean_matrix <- function(data = data,
+                              k = k,
+                              starting_seed = 599,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9) {
+  result <- resample_function(data = data,
+                              k = k,
+                              starting_seed = starting_seed,
+                              number_of_resamples = number_of_resamples,
+                              proportion_resample = proportion_resample)
+
+  # Absolute value the entire matrix, for all matrices
+  absolute_sum <- lapply(result, abs)
+
+  # Get the sum of absolute values in the final matrix
+  absolute_final <- absolute_sum |>
+    reduce(`+`)
+
+  # Get the sum of values in the final matrix
+  numerator <- result |>
+    reduce(`+`)
+
+  # Returns the matrix of zero-removed means.
+  # The zero-removed mean is the sum over the (length - the number of zeroes).
+  # The length - the number of zeroes is equivalent to the sum over absolute values
+  return(numerator / absolute_final)
+}
 ```
 
 
 ```{r}
 set.seed(599)
 null_multiple_random_unif_init_2 <- function(starting_seed = 599,
-                                              number_of_resamples = 15,
-                                              n = 5,
-                                              max_k = 5) {
+                                             number_of_resamples = 15,
+                                             n = 5,
+                                             max_k = 5) {
   lapply(c(1:n), function(i) {
     temp_seed <- starting_seed * i
     set.seed(temp_seed)
     data <- data.frame(cbind(runif(100), runif(100), runif(100)))
     store_res <- lapply(c(2:max_k), function(x) one_k_mean_matrix(data = data,
+                                                                  formula = ~X1 + X2 + X3,
                                                                   starting_seed = temp_seed,
                                                                   k = x,
                                                                   number_of_resamples = number_of_resamples))
@@ -397,13 +427,7 @@ data <- data.frame(cbind(runif(100), runif(100), runif(100)))
 ```
 
 ```{r}
-library(plotly)
-data <- data.frame(cbind(runif(100), runif(100), runif(100)))
-
-kmeans <- k_means(num_clusters = 4) |>
- fit(~ X1 + X2,
-     data = random_sample)
-data |> 
-  plot_ly(x = ~X1, y = ~X2, z = ~X3, color = )
+source("functions.R")
+resample_function(data = penguins, formula = ~ flipper_length_mm + bill_length_mm)
 ```
 

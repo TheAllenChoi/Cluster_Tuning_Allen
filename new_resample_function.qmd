@@ -1,0 +1,325 @@
+---
+title: "new_resample_function"
+format: html
+editor: visual
+---
+## Packages
+
+```{r}
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+library(MASS)
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+
+source("functions.R")
+```
+```{r}
+data <- penguins |> 
+  drop_na()
+```
+
+```{r}
+data
+```
+```{r}
+tictoc::tic()
+data = data
+k = 3
+number_of_resamples = 15
+proportion_resample = 0.9
+starting_seed = 599
+  
+set.seed(599)
+result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+data$index <- 1:nrow(data)
+
+random_sample <- data |>
+ filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+# Run k-means on resample
+# kmeans <- k_means(num_clusters = k) |>
+#   fit(~ bill_length_mm + flipper_length_mm,
+#       data = random_sample)
+
+kmeans <- k_means(num_clusters = k) |>
+ fit(~ bill_length_mm + flipper_length_mm,
+     data = random_sample)
+
+intermediate <- data.frame(random_sample$index,
+                          extract_cluster_assignment(kmeans) |>
+                          mutate(.cluster = as.character(.cluster)),
+                          stringsAsFactors = FALSE)
+colnames(intermediate) <- c("index", "cluster")
+
+for (c in unique(intermediate$cluster)) {
+   idx <- intermediate[intermediate$cluster == c, ]$index
+   
+   # with combinations (x, y) != (y, x), possibly breaking the matrix...
+   ones <- t(combn(idx, 2))
+   result_matrix[ones[, 1], ones[, 2]] <- 1
+   result_matrix[ones[, 2], ones[, 1]] <- 1
+   
+   neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+   result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+   result_matrix[neg_one_idx[, 2], neg_one_idx[, 1]] <- -1
+}
+
+a <- result_matrix
+
+tictoc::toc()
+```
+
+```{r}
+resample_function <- function(data = data,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  tictoc::tic()
+  data <- data |>
+    drop_na()
+  # data <- data[sample(nrow(data)), ]
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+
+       # Reproducibility over parallel
+       set.seed(starting_seed)
+       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+       # 80% resample
+       random_sample <- data |>
+         filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+       # Run k-means on resample
+       # kmeans <- k_means(num_clusters = k) |>
+       #   fit(~ bill_length_mm + flipper_length_mm,
+       #       data = random_sample)
+
+       kmeans <- k_means(num_clusters = k) |>
+         fit(~ bill_length_mm + flipper_length_mm,
+             data = random_sample)
+
+       intermediate <- data.frame(random_sample$index,
+                                  extract_cluster_assignment(kmeans) |>
+                                    mutate(.cluster = as.character(.cluster)),
+                                  stringsAsFactors = FALSE)
+       colnames(intermediate) <- c("index", "cluster")
+
+       # I don't know how to vectorize this :(
+       for (n in 1:(nrow(intermediate) - 1)) {
+         for (m in (n + 1):nrow(intermediate)) {
+           # if the points are the same then set to NA
+           if (intermediate[n, ]$index != intermediate[m, ]$index) {
+             # get first pointer cluster
+             first <- intermediate[n, ]$cluster
+             # get second pointer cluster
+             second <- intermediate[m, ]$cluster
+
+             # if clusters are the same
+             if (first == second) {
+               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
+             } else {
+               # if clusters are different
+               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
+             }
+           }
+         }
+       }
+       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+       result_matrix
+
+  tictoc::toc()
+  return(result_matrix)
+}
+
+b <- resample_function(data = data,
+                              k = 3,
+                              number_of_resamples = 1,
+                              proportion_resample = 0.9,
+                              starting_seed = 599)
+```
+
+```{r}
+a[lower.tri(a, diag = TRUE)] <- NA
+image(a)
+
+image(b)
+
+
+plot <- data.frame(a) |> 
+  rownames_to_column("Index") |> 
+  pivot_longer(-Index) |> 
+  mutate(Index = factor(Index, levels = 1:nrow(a)),
+         name = factor(name, levels = paste0("X", 1:nrow(a)))) |> 
+  ggplot(aes(x = Index, y = name)) +
+  geom_tile(aes(fill = value))
+
+plot
+```
+
+
+```{r}
+new_resample_function <- function(data = data,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  tictoc::tic()
+  data <- data |>
+    drop_na()
+  # data <- data[sample(nrow(data)), ]
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+  results <- foreach(i = 1:number_of_resamples,
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+                       # Reproducibility over parallel
+                       set.seed(starting_seed + i)
+                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+                       # 80% resample
+                       random_sample <- data |>
+                         filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+                       # Run k-means on resample
+                       # kmeans <- k_means(num_clusters = k) |>
+                       #   fit(~ bill_length_mm + flipper_length_mm,
+                       #       data = random_sample)
+
+                       kmeans <- k_means(num_clusters = k) |>
+                         fit(~ bill_length_mm + flipper_length_mm,
+                             data = random_sample)
+
+                       intermediate <- data.frame(random_sample$index,
+                                                  extract_cluster_assignment(kmeans) |>
+                                                    mutate(.cluster = as.character(.cluster)),
+                                                  stringsAsFactors = FALSE)
+                       colnames(intermediate) <- c("index", "cluster")
+
+                       for (c in unique(intermediate$cluster)) {
+                         idx <- intermediate[intermediate$cluster == c, ]$index
+                         
+                         # with combinations (x, y) != (y, x), possibly breaking the matrix...
+                         ones <- t(combn(idx, 2))
+                         result_matrix[ones[, 1], ones[, 2]] <- 1
+                         result_matrix[ones[, 2], ones[, 1]] <- 1
+                         
+                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                         result_matrix[neg_one_idx[, 2], neg_one_idx[, 1]] <- -1
+                       }
+                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+                       result_matrix
+                     }
+  tictoc::toc()
+  return(results)
+}
+
+resample_function <- function(data = data,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  tictoc::tic()
+  data <- data |>
+    drop_na()
+  # data <- data[sample(nrow(data)), ]
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+  results <- foreach(i = 1:number_of_resamples,
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+                       # Reproducibility over parallel
+                       set.seed(starting_seed + i)
+                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+                       # 80% resample
+                       random_sample <- data |>
+                         filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+                       # Run k-means on resample
+                       # kmeans <- k_means(num_clusters = k) |>
+                       #   fit(~ bill_length_mm + flipper_length_mm,
+                       #       data = random_sample)
+
+                       kmeans <- k_means(num_clusters = k) |>
+                         fit(~ bill_length_mm + flipper_length_mm,
+                             data = random_sample)
+
+                       intermediate <- data.frame(random_sample$index,
+                                                  extract_cluster_assignment(kmeans) |>
+                                                    mutate(.cluster = as.character(.cluster)),
+                                                  stringsAsFactors = FALSE)
+                       colnames(intermediate) <- c("index", "cluster")
+
+                       # I don't know how to vectorize this :(
+                       for (n in 1:(nrow(intermediate) - 1)) {
+                         for (m in (n + 1):nrow(intermediate)) {
+                           # if the points are the same then set to NA
+                           if (intermediate[n, ]$index != intermediate[m, ]$index) {
+                             # get first pointer cluster
+                             first <- intermediate[n, ]$cluster
+                             # get second pointer cluster
+                             second <- intermediate[m, ]$cluster
+
+                             # if clusters are the same
+                             if (first == second) {
+                               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
+                             } else {
+                               # if clusters are different
+                               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
+                             }
+                           }
+                         }
+                       }
+                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+                       result_matrix
+                     }
+  tictoc::toc()
+  return(results)
+}
+```
+
+```{r}
+result_1 <- resample_function(data = data)
+result_2 <- new_resample_function(data = data)
+```
+```{r}
+absolute_sum <- lapply(result_1, abs)
+absolute_final <- absolute_sum |>
+  reduce(`+`)
+numerator <- result_1 |>
+  reduce(`+`)
+x <- (numerator / absolute_final)
+
+
+
+absolute_sum <- lapply(result_2, abs)
+absolute_final <- absolute_sum |>
+  reduce(`+`)
+numerator <- result_2 |>
+  reduce(`+`)
+y <- (numerator / absolute_final)
+
+```
+
+```{r}
+squared_distance_from_one <- function(mean_matrix = mean_matrix) {
+  res_vec <- as.vector(mean_matrix)
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  return(sum((1 - res_vec)^2))
+}
+image(x)
+
+image(y)
+
+squared_distance_from_one(x)
+squared_distance_from_one(y)
+```
+

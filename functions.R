@@ -1,4 +1,5 @@
 resample_function <- function(data = data,
+                              formula,
                               k = 3,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
@@ -6,7 +7,6 @@ resample_function <- function(data = data,
   tictoc::tic()
   data <- data |>
     drop_na()
-  # data <- data[sample(nrow(data)), ]
   data$index <- 1:nrow(data)
   results <- list()
 
@@ -16,17 +16,12 @@ resample_function <- function(data = data,
                        # Reproducibility over parallel
                        set.seed(starting_seed + i)
                        result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
-                       # 80% resample
+
                        random_sample <- data |>
                          filter(index %in% sample(index, proportion_resample * nrow(data)))
 
-                       # Run k-means on resample
-                       # kmeans <- k_means(num_clusters = k) |>
-                       #   fit(~ bill_length_mm + flipper_length_mm,
-                       #       data = random_sample)
-
                        kmeans <- k_means(num_clusters = k) |>
-                         fit(~ X1 + X2,
+                         fit({{formula}},
                              data = random_sample)
 
                        intermediate <- data.frame(random_sample$index,
@@ -35,25 +30,18 @@ resample_function <- function(data = data,
                                                   stringsAsFactors = FALSE)
                        colnames(intermediate) <- c("index", "cluster")
 
-                       # I don't know how to vectorize this :(
-                       for (n in 1:(nrow(intermediate) - 1)) {
-                         for (m in (n + 1):nrow(intermediate)) {
-                           # if the points are the same then set to NA
-                           if (intermediate[n, ]$index != intermediate[m, ]$index) {
-                             # get first pointer cluster
-                             first <- intermediate[n, ]$cluster
-                             # get second pointer cluster
-                             second <- intermediate[m, ]$cluster
+                       for (c in unique(intermediate$cluster)) {
+                         idx <- intermediate[intermediate$cluster == c, ]$index
 
-                             # if clusters are the same
-                             if (first == second) {
-                               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
-                             } else {
-                               # if clusters are different
-                               result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
-                             }
-                           }
-                         }
+                         # with combinations (x, y) != (y, x), possibly breaking the matrix calc...
+                         # need to set x = y and y = x for guarantee
+                         ones <- t(combn(idx, 2))
+                         result_matrix[ones[, 1], ones[, 2]] <- 1
+                         result_matrix[ones[, 2], ones[, 1]] <- 1
+
+                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                         result_matrix[neg_one_idx[, 2], neg_one_idx[, 1]] <- -1
                        }
                        result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
                        result_matrix
@@ -63,11 +51,13 @@ resample_function <- function(data = data,
 }
 
 one_k_mean_matrix <- function(data = data,
+                              formula,
                               k = k,
                               starting_seed = 599,
                               number_of_resamples = 15,
                               proportion_resample = 0.9) {
   result <- resample_function(data = data,
+                              formula = formula,
                               k = k,
                               starting_seed = starting_seed,
                               number_of_resamples = number_of_resamples,
