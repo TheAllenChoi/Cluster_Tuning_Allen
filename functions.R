@@ -1,5 +1,5 @@
 resample_function <- function(data = data,
-                              formula,
+                              formula = ~ .,
                               k = 3,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
@@ -35,13 +35,13 @@ resample_function <- function(data = data,
 
                          # with combinations (x, y) != (y, x), possibly breaking the matrix calc...
                          # need to set x = y and y = x for guarantee
+
+                         idx <- sort(idx)
                          ones <- t(combn(idx, 2))
                          result_matrix[ones[, 1], ones[, 2]] <- 1
-                         result_matrix[ones[, 2], ones[, 1]] <- 1
 
                          neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
                          result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
-                         result_matrix[neg_one_idx[, 2], neg_one_idx[, 1]] <- -1
                        }
                        result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
                        result_matrix
@@ -51,7 +51,7 @@ resample_function <- function(data = data,
 }
 
 one_k_mean_matrix <- function(data = data,
-                              formula,
+                              formula = ~.,
                               k = k,
                               starting_seed = 599,
                               number_of_resamples = 15,
