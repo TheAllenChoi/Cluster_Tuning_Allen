@@ -1,0 +1,123 @@
+---
+title: "score_null_distribution"
+format: html
+---
+
+```{r}
+#| message: false
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+library(MASS)
+library(ggridges)
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+
+source("functions.R")
+```
+
+```{r}
+null_score_unif <- function(p = 2,
+                            n = 100,
+                            starting_seed = 599,
+                            n_resamples = 20,
+                            prop_resample = 0.9,
+                            runs = 20,
+                            k = 10) {
+  # Takes as input 
+  # p: p-dimensional uniform distribution
+  # n: Observations per dimension p from the distribution
+  # starting_seed: Initial starting seed for replicability
+  # number_resamples: Number of resamples per run
+  # prop_resamples: Proportion of data sampled per resample
+  # runs: Number of runs
+  # k: Runs the simulation up to cluster k from 2. So, 2:k clusters.
+
+  res <- lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, runif(n)))
+    inner_res <- lapply(c(2:k), function(x) {one_k_mean_matrix(data = data,
+                      formula = ~.,
+                      k = x,
+                      starting_seed = temp_seed, # very important to set this
+                      number_of_resamples = n_resamples,
+                      proportion_resample = prop_resample) |> 
+        squared_distance_from_one()
+    }) |> 
+      reduce(`rbind`)
+  }) |> 
+    t() |> 
+    data.frame() |> 
+    unnest(cols = everything()) |> 
+    mutate(Cluster_Num = row_number() + 1)  
+  return(res)
+}
+
+
+
+
+
+
+
+# null_score_unif() |>
+#   pivot_longer(-Cluster_Num) |> 
+#   dplyr::select(!name) |> 
+#   ggplot(aes(x = value, y = factor(Cluster_Num, levels = 2:11, ordered = TRUE), 
+#              fill = factor(Cluster_Num, levels = 2:11, ordered = TRUE))) +
+#   geom_density_ridges() +
+#   ggtitle("10 Clusters, 100 n, with 20 resamples on a random NORMAL") +
+#   theme_minimal()
+```
+
+
+```{r}
+data.frame(rbind(
+  cbind(rnorm(100, -3), rnorm(100, -3)),
+  cbind(rnorm(100, 2), rnorm(100, 2)),
+  cbind(rnorm(100, 7), rnorm(100, 7)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2)) |> 
+    ggplot(aes(x = X1, y = X2)) +
+    geom_point()
+```
+```{r}
+r_data <- data.frame(rbind(
+  cbind(rnorm(100, -3), rnorm(100, -3)),
+  cbind(rnorm(100, 2), rnorm(100, 2)),
+  cbind(rnorm(100, 7), rnorm(100, 7)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+# r_data <- r_data[sample(nrow(r_data)), ]
+
+# list_res_unif <- lapply(2:5, function(x) one_k_mean_matrix(data = r_data,
+#                                                            k = x,
+#                                                            proportion_resample = 0.9,
+#                                                            number_of_resamples = 15))
+# lapply(list_res_unif, function(x) squared_distance_from_one(x))
+# 
+# image(list_res_unif[[1]])
+# image(list_res_unif[[2]])
+# 
+
+
+set.seed(599)
+random_normal <- rbind(data.frame(cbind(rnorm(50), rnorm(50))),
+                       data.frame(cbind(rnorm(50, mean = 0 + 5), rnorm(50, mean = 0 + 5))))
+
+random_normal <- random_normal |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+list_res_norm <- lapply(2:5, function(x) one_k_mean_matrix(data = random_normal,
+                                                           k = x,
+                                                           proportion_resample = 0.9,
+                                                           number_of_resamples = 15))
+lapply(list_res_norm, function(x) squared_distance_from_one(x))
+```
+
+

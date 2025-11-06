@@ -37,7 +37,6 @@ resample_function <- function(data = data,
   start <- Sys.time()
   data <- data |> 
     drop_na()
-  # data <- data[sample(nrow(data)), ]
   data$index <- 1:nrow(data)
   results <- list()
   
@@ -47,14 +46,9 @@ resample_function <- function(data = data,
     # Reproducibility over parallel
     set.seed(starting_seed + i)
     result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
-    # 80% resample
+
     random_sample <- data |> 
       filter(index %in% sample(index, proportion_resample * nrow(data)))
-    
-    # Run k-means on resample
-    # kmeans <- k_means(num_clusters = k) |>
-    #   fit(~ bill_length_mm + flipper_length_mm,
-    #       data = random_sample)
 
     kmeans <- k_means(num_clusters = k) |>
       fit(~ X1 + X2,
@@ -66,7 +60,6 @@ resample_function <- function(data = data,
                                stringsAsFactors = FALSE)
     colnames(intermediate) <- c("index", "cluster")
     
-    # I don't know how to vectorize this :(
     for (n in 1:(nrow(intermediate) - 1)) {
       for (m in (n + 1):nrow(intermediate)) {
         # if the points are the same then set to NA
@@ -90,7 +83,7 @@ resample_function <- function(data = data,
     result_matrix
   }
   end = Sys.time()
-  print(paste0("Number of seconds taken is: ", end - start))
+
   return(results)
 }
 ```

@@ -1,0 +1,247 @@
+---
+title: "investigate_anomaly"
+format: html
+---
+
+```{r}
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+```
+
+```{r}
+resample_function_1 <- function(data = data,
+                                formula = ~ .,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  # tictoc::tic()
+  data <- data |>
+    drop_na()
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+  results <- foreach(i = 1:number_of_resamples,
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+       # Reproducibility over parallel
+       set.seed(starting_seed + i)
+       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+
+       random_sample <- data |>
+         filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+       kmeans <- k_means(num_clusters = k) |>
+         fit({{formula}},
+             data = random_sample)
+
+       intermediate <- data.frame(random_sample$index,
+                                  extract_cluster_assignment(kmeans) |>
+                                    mutate(.cluster = as.character(.cluster)),
+                                  stringsAsFactors = FALSE)
+       colnames(intermediate) <- c("index", "cluster")
+
+        for (n in 1:(nrow(intermediate) - 1)) {
+          for (m in (n + 1):nrow(intermediate)) {
+            # if the points are the same then set to NA
+            if (intermediate[n, ]$index != intermediate[m, ]$index) {
+              # get first pointer cluster
+              first <- intermediate[n, ]$cluster
+              # get second pointer cluster
+              second <- intermediate[m, ]$cluster
+      
+              # if clusters are the same
+              if (first == second) {
+                result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
+              } else {
+                # if clusters are different
+                result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
+              }
+            }
+          }
+        }
+       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+       result_matrix
+     }
+  # tictoc::toc()
+  return(results)
+}
+```
+
+
+```{r}
+resample_function_2 <- function(data = data,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  start <- Sys.time()
+  data <- data |> 
+    drop_na()
+  data$index <- 1:nrow(data)
+  results <- list()
+  
+  # For loop
+  results <- foreach(i = 1:number_of_resamples,
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+    # Reproducibility over parallel
+    set.seed(starting_seed + i)
+    result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+
+    random_sample <- data |> 
+      filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+    kmeans <- k_means(num_clusters = k) |>
+      fit(~ X1 + X2,
+          data = random_sample)
+    
+    intermediate <- data.frame(random_sample$index,
+                               extract_cluster_assignment(kmeans) |>
+                                 mutate(.cluster = as.character(.cluster)),
+                               stringsAsFactors = FALSE)
+    colnames(intermediate) <- c("index", "cluster")
+    
+    for (n in 1:(nrow(intermediate) - 1)) {
+      for (m in (n + 1):nrow(intermediate)) {
+        # if the points are the same then set to NA
+        if (intermediate[n, ]$index != intermediate[m, ]$index) {
+          # get first pointer cluster
+          first <- intermediate[n, ]$cluster
+          # get second pointer cluster
+          second <- intermediate[m, ]$cluster
+  
+          # if clusters are the same
+          if (first == second) {
+            result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
+          } else {
+            # if clusters are different
+            result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
+          }
+        }
+      }
+    }
+    result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+    result_matrix
+  }
+  end = Sys.time()
+
+  return(results)
+}
+```
+
+```{r}
+squared_distance_from_one <- function(mean_matrix = mean_matrix) {
+  res_vec <- as.vector(mean_matrix)
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  return(sum((1 - res_vec)^2))
+}
+```
+
+```{r}
+r_data <- data.frame(rbind(
+  cbind(rnorm(50, -3), rnorm(50, -3)),
+  cbind(rnorm(50, 2), rnorm(50, 2)),
+  cbind(rnorm(50, 7), rnorm(50, 7)))) 
+
+r_data |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2)) |> 
+    ggplot(aes(x = X1, y = X2)) +
+    geom_point()
+```
+
+```{r}
+mean_matrix <- function(list_of_matrices = list_of_matrices) {
+  # Absolute value the entire matrix, for all matrices
+  absolute_sum <- lapply(list_of_matrices, abs)
+
+  # Get the sum of absolute values in the final matrix
+  absolute_final <- absolute_sum |>
+    reduce(`+`)
+
+  # Get the sum of values in the final matrix
+  numerator <- list_of_matrices |>
+    reduce(`+`)
+
+  # Returns the matrix of zero-removed means.
+  # The zero-removed mean is the sum over the (length - the number of zeroes).
+  # The length - the number of zeroes is equivalent to the sum over absolute values
+  return(numerator / absolute_final)
+}
+
+# g <- mean_matrix(list_res)
+# 
+# squared_distance_from_one(mean_matrix(list_res_2))
+```
+
+
+
+```{r}
+c <- lapply(c(2), function(x) resample_function_1(data = r_data,
+                                                    k = x))
+d <- lapply(c(2), function(x) resample_function_2(data = r_data,
+                                                    k = x))
+
+lapply(c[[1]], image)
+
+c.1 <- lapply(c, mean_matrix)
+d.1 <- lapply(d, mean_matrix)
+```
+```{r}
+lapply(d[[1]], image)
+```
+
+
+
+```{r}
+image(c.1[[1]])
+
+image(d.1[[1]])
+```
+
+
+```{r}
+set.seed(551)
+example <- data.frame(rbind(
+  cbind(rnorm(50, -5), rnorm(50, -5)),
+  cbind(rnorm(50, 0), rnorm(50, 0)),
+  cbind(rnorm(50, 5), rnorm(50, 5))))
+
+f_1 <- function(formula = ~ .,
+                k = 2) {
+  return(k_means(num_clusters = k) |> 
+  fit({{formula}},
+      data = example))
+}
+
+f_2 <- function(data = example,
+                k = 2) {
+  return(k_means(num_clusters = k) |> 
+  fit(~ X1 + X2,
+      data = example)
+  )
+}
+set.seed(551)
+res_1 <- f_1()
+set.seed(551)
+res_2 <- f_2()
+
+
+example |> 
+  ggplot(aes(x = X1, y = X2, color = factor(res_1$fit$cluster))) +
+  geom_point()
+
+example |> 
+  ggplot(aes(x = X1, y = X2, color = factor(res_2$fit$cluster))) +
+  geom_point()
+```
+```{r}
+res_2
+```
+

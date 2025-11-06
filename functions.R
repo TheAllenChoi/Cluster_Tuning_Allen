@@ -4,7 +4,7 @@ resample_function <- function(data = data,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
                               starting_seed = 599) {
-  tictoc::tic()
+  # tictoc::tic()
   data <- data |>
     drop_na()
   data$index <- 1:nrow(data)
@@ -46,7 +46,7 @@ resample_function <- function(data = data,
                        result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
                        result_matrix
                      }
-  tictoc::toc()
+  # tictoc::toc()
   return(results)
 }
 

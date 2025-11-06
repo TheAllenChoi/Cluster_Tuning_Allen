@@ -361,6 +361,8 @@ ggplotly(final_mean_matrix |>
 )
 ```
 
+
+
 ```{r}
 res <- final_sum_matrix |> 
   group_by(k) |> 
@@ -438,10 +440,3 @@ final_mean_matrix |>
   summarize(total = sum((1 - value)^2))
 ```
 
-## Experiments
-
-On either simluated data or real data with known structure, run several replications of your experiment for each of various k's. Make sure to set a seed.
-
-## Results
-
-What did your experiments show? Why do you think this happened? Is there anything promising here?

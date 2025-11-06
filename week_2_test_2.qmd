@@ -116,8 +116,8 @@ resample_function <- function(data = data,
 final_sum_matrix <- data.frame()
 ```
 
-
 # k = 2
+
 ```{r}
 res <- resample_function(data = data, number_of_resamples = 10, k = 2)
 final <- res |> 
@@ -131,6 +131,7 @@ final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
 ```
 
 # k = 3
+
 ```{r}
 res <- resample_function(data = data, number_of_resamples = 10, k = 3)
 final <- res |> 
@@ -145,6 +146,7 @@ final_sum_matrix <- rbind(final_sum_matrix, data.frame(final) |> drop_na() |>
 ```
 
 # k = 4
+
 ```{r}
 res <- resample_function(data = data, number_of_resamples = 10, k = 4)
 final <- res |> 
@@ -179,7 +181,6 @@ final_sum_matrix |>
   facet_wrap(~k)
 ```
 
-
 ```{r}
 res <- final_sum_matrix |> 
   group_by(k) |> 
@@ -201,6 +202,7 @@ data |>
              color = species)) +
   geom_point()
 ```
+
 ```{r}
 new_d <- penguins
 new_d$index <- 1:nrow(new_d)
@@ -225,7 +227,6 @@ random_sample |>
   ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
   geom_point()
 ```
-
 
 ## Experiments
 
