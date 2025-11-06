@@ -16,7 +16,7 @@ set.seed(599)
 
 ```{r}
 resample_function_1 <- function(data = data,
-                                formula = ~ .,
+                              formula = ~ .,
                               k = 3,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
@@ -30,45 +30,40 @@ resample_function_1 <- function(data = data,
   # For loop
   results <- foreach(i = 1:number_of_resamples,
                      .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
-       # Reproducibility over parallel
-       set.seed(starting_seed + i)
-       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+                       # Reproducibility over parallel
+                       set.seed(starting_seed + i)
+                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
 
-       random_sample <- data |>
-         filter(index %in% sample(index, proportion_resample * nrow(data)))
+                       random_sample <- data |>
+                         filter(index %in% sample(index, proportion_resample * nrow(data)))
 
-       kmeans <- k_means(num_clusters = k) |>
-         fit({{formula}},
-             data = random_sample)
+                       kmeans <- k_means(num_clusters = k) |>
+                         fit({{formula}},
+                             data = random_sample |>
+                               select(-index))
 
-       intermediate <- data.frame(random_sample$index,
-                                  extract_cluster_assignment(kmeans) |>
-                                    mutate(.cluster = as.character(.cluster)),
-                                  stringsAsFactors = FALSE)
-       colnames(intermediate) <- c("index", "cluster")
+                       intermediate <- data.frame(random_sample$index,
+                                                  extract_cluster_assignment(kmeans) |>
+                                                    mutate(.cluster = as.character(.cluster)),
+                                                  stringsAsFactors = FALSE)
+                       colnames(intermediate) <- c("index", "cluster")
 
-        for (n in 1:(nrow(intermediate) - 1)) {
-          for (m in (n + 1):nrow(intermediate)) {
-            # if the points are the same then set to NA
-            if (intermediate[n, ]$index != intermediate[m, ]$index) {
-              # get first pointer cluster
-              first <- intermediate[n, ]$cluster
-              # get second pointer cluster
-              second <- intermediate[m, ]$cluster
-      
-              # if clusters are the same
-              if (first == second) {
-                result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- 1
-              } else {
-                # if clusters are different
-                result_matrix[intermediate[n, ]$index, intermediate[m, ]$index] <- -1
-              }
-            }
-          }
-        }
-       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
-       result_matrix
-     }
+                       for (c in unique(intermediate$cluster)) {
+                         idx <- intermediate[intermediate$cluster == c, ]$index
+
+                         # with combinations (x, y) != (y, x), possibly breaking the matrix calc...
+                         # need to set x = y and y = x for guarantee
+
+                         idx <- sort(idx)
+                         ones <- t(combn(idx, 2))
+                         result_matrix[ones[, 1], ones[, 2]] <- 1
+
+                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                       }
+                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+                       result_matrix
+                     }
   # tictoc::toc()
   return(results)
 }
@@ -192,6 +187,10 @@ lapply(c[[1]], image)
 
 c.1 <- lapply(c, mean_matrix)
 d.1 <- lapply(d, mean_matrix)
+
+squared_distance_from_one(c.1[[1]])
+
+squared_distance_from_one(d.1[[1]])
 ```
 ```{r}
 lapply(d[[1]], image)

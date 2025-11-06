@@ -22,7 +22,8 @@ resample_function <- function(data = data,
 
                        kmeans <- k_means(num_clusters = k) |>
                          fit({{formula}},
-                             data = random_sample)
+                             data = random_sample |>
+                               select(-index))
 
                        intermediate <- data.frame(random_sample$index,
                                                   extract_cluster_assignment(kmeans) |>
@@ -72,6 +73,24 @@ one_k_mean_matrix <- function(data = data,
 
   # Get the sum of values in the final matrix
   numerator <- result |>
+    reduce(`+`)
+
+  # Returns the matrix of zero-removed means.
+  # The zero-removed mean is the sum over the (length - the number of zeroes).
+  # The length - the number of zeroes is equivalent to the sum over absolute values
+  return(numerator / absolute_final)
+}
+
+mean_matrix <- function(list_of_matrices = list_of_matrices) {
+  # Absolute value the entire matrix, for all matrices
+  absolute_sum <- lapply(list_of_matrices, abs)
+
+  # Get the sum of absolute values in the final matrix
+  absolute_final <- absolute_sum |>
+    reduce(`+`)
+
+  # Get the sum of values in the final matrix
+  numerator <- list_of_matrices |>
     reduce(`+`)
 
   # Returns the matrix of zero-removed means.
