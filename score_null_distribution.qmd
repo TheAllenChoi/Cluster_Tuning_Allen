@@ -61,15 +61,15 @@ null_score_unif <- function(p = 2,
 
 
 tic()
-result <- null_score_unif()
+# result <- null_score_unif()
 
-result |>
-  pivot_longer(-Cluster_Num) |>
-  dplyr::select(-name) |>
-  ggplot(aes(x = factor(Cluster_Num, levels = 2:11, ordered = TRUE), y = value)) +
-  geom_boxplot() +
-  ggtitle("10 Clusters, 100 n, with 20 resamples on a random NORMAL") +
-  theme_minimal()
+# result |>
+#   pivot_longer(-Cluster_Num) |>
+#   dplyr::select(-name) |>
+#   ggplot(aes(x = factor(Cluster_Num, levels = 2:11, ordered = TRUE), y = value)) +
+#   geom_boxplot() +
+#   ggtitle("10 Clusters, 100 n, with 20 resamples on a random NORMAL") +
+#   theme_minimal()
 toc()
 ```
 ```{r}
@@ -84,16 +84,16 @@ toc()
 tic()
 p <- c(2)
 n <- c(100)
-n_resamples <- c(30)
+n_resamples <- c(30, 50, 70)
 prop_resample <- 0.9
-runs <- c(20)
-k <- 2:10
+runs <- c(20, 40)
+k <- 2:8
 starting_seed <- 599
 
 grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |> 
   rowwise() |> 
   mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i
+    temp_seed <- starting_seed * i * p * n * k
     set.seed(temp_seed) # very important to set this
     data <- data.frame(replicate(p, rnorm(n)))
     resample_matrices <- resample_function(data = data,
@@ -107,15 +107,30 @@ grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
     
   })))
 
-grid_result |> 
+end_result <- grid_result |> 
   unnest(res) |> 
-  unnest(res) |> 
-  filter(n_resamples == 30) |> 
-  filter(runs == 20) |> 
-  ggplot(aes(x = factor(k, levels = 2:11, ordered = TRUE), y = res)) +
-  geom_boxplot() +
-  ggtitle("10 Clusters, 100 n, with 20 resamples on a random NORMAL") +
-  theme_minimal()
+  unnest(res)
 toc()
+
+write.csv(end_result,
+          file = here::here("data/simulation_unif_combination_run_1.csv"))
+```
+
+```{r}
+end_result |> 
+  mutate(k = factor(k)) |> 
+  ggplot(aes(x = k, y = res, fill = factor(n_resamples))) +
+  geom_boxplot() +
+  facet_wrap(~runs) +
+  theme_minimal()
+
+
+end_result |> 
+  mutate(k = factor(k)) |> 
+  ggplot(aes(x = res, y = k, fill = factor(n_resamples))) +
+  geom_density_ridges() +
+  facet_wrap(~runs)
+
+# try n_resamples 5, 10, 20?
 ```
 
