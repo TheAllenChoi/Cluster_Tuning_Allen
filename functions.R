@@ -34,12 +34,14 @@ resample_function <- function(data = data,
                        for (c in unique(intermediate$cluster)) {
                          idx <- intermediate[intermediate$cluster == c, ]$index
 
-                         # with combinations (x, y) != (y, x), possibly breaking the matrix calc...
-                         # need to set x = y and y = x for guarantee
-
-                         idx <- sort(idx)
-                         ones <- t(combn(idx, 2))
-                         result_matrix[ones[, 1], ones[, 2]] <- 1
+                         # Check that the index list is not length 1 for purposes of n > m for combn
+                         # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
+                         # value as param inside combn
+                         if (length(idx) > 1) {
+                           idx <- sort(idx)
+                           ones <- t(combn(idx, 2))
+                           result_matrix[ones[, 1], ones[, 2]] <- 1
+                         }
 
                          neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
                          result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
