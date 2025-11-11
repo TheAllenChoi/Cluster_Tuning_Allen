@@ -173,7 +173,7 @@ end_result |>
   geom_boxplot() +
   ggtitle(
     "Scores on a Random p-Dimensional Uniform Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9 and n=100 per sample (starting seed = 599)") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
   theme_minimal()
 
 ```
