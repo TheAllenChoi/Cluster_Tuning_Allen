@@ -172,7 +172,7 @@ end_result |>
   ggplot(aes(x = Clusters, y = Score, fill = p)) +
   geom_boxplot() +
   ggtitle(
-    "Scores on a Random p-Dimensional Uniform Distribution") +
+    "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
   theme_minimal()
 
