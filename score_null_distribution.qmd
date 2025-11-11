@@ -21,58 +21,6 @@ source("functions.R")
 ```
 
 ```{r}
-null_score_unif <- function(p = 2,
-                            n = 100,
-                            starting_seed = 599,
-                            n_resamples = 30,
-                            prop_resample = 0.9,
-                            runs = 20,
-                            k = 10) {
-  # Takes as input 
-  # p: p-dimensional uniform distribution
-  # n: Observations per dimension p from the distribution
-  # starting_seed: Initial starting seed for replicability
-  # n_resamples: Number of resamples per run
-  # prop_resamples: Proportion of data sampled per resample
-  # runs: Number of runs
-  # k: Runs the simulation up to cluster k from 2. So, 2:k clusters.
-
-  res <- lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i
-    set.seed(temp_seed) # very important to set this
-    data <- data.frame(replicate(p, rnorm(n)))
-    
-    inner_res <- lapply(c(2:k), function(x) {one_k_mean_matrix(data = data,
-                      formula = ~.,
-                      k = x,
-                      starting_seed = temp_seed, # very important to set this
-                      number_of_resamples = n_resamples,
-                      proportion_resample = prop_resample) |> 
-        squared_distance_from_one()
-    }) |> 
-      reduce(`rbind`)
-  }) |> 
-    t() |> 
-    data.frame() |> 
-    unnest(cols = everything()) |> 
-    mutate(Cluster_Num = row_number() + 1)  
-  return(res)
-}
-
-
-tic()
-# result <- null_score_unif()
-
-# result |>
-#   pivot_longer(-Cluster_Num) |>
-#   dplyr::select(-name) |>
-#   ggplot(aes(x = factor(Cluster_Num, levels = 2:11, ordered = TRUE), y = value)) +
-#   geom_boxplot() +
-#   ggtitle("10 Clusters, 100 n, with 20 resamples on a random NORMAL") +
-#   theme_minimal()
-toc()
-```
-```{r}
 # p: p-dimensional uniform distribution
 # n: Observations per dimension p from the distribution
 # starting_seed: Initial starting seed for replicability
@@ -81,13 +29,112 @@ toc()
 # runs: Number of runs
 # k: Runs the simulation up to cluster k from 2. So, 2:k clusters.
 
+# tic()
+# p <- c(2)
+# n <- c(100)
+# n_resamples <- c(30, 50, 70)
+# prop_resample <- 0.9
+# runs <- c(20, 40)
+# k <- 2:8
+# starting_seed <- 599
+# 
+# grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+#   rowwise() |>
+#   mutate(res = list(lapply(c(1:runs), function(i) {
+#     temp_seed <- starting_seed * i * p * n * k
+#     set.seed(temp_seed) # very important to set this
+#     data <- data.frame(replicate(p, rnorm(n)))
+#     resample_matrices <- resample_function(data = data,
+#                                            formula = ~ .,
+#                                            k = k,
+#                                            number_of_resamples = n_resamples,
+#                                            proportion_resample = prop_resample,
+#                                            starting_seed = temp_seed)
+#     m_matrix <- mean_matrix(resample_matrices)
+#     return(squared_distance_from_one(m_matrix))
+# 
+#   })))
+# 
+# end_result <- grid_result |>
+#   unnest(res) |>
+#   unnest(res)
+# toc()
+# 
+# write.csv(end_result,
+#           file = here::here("data/simulation_norm_combination_run_1.csv"))
+```
+
+```{r}
+end_result <- read.csv(file = here::here("data/simulation_norm_combination_run_1.csv"))
+
+end_result |>
+  mutate(k = factor(k)) |>
+  ggplot(aes(x = k, y = res, fill = factor(n_resamples))) +
+  geom_boxplot() +
+  facet_wrap(~runs) +
+  theme_minimal()
+
+
+end_result |>
+  mutate(k = factor(k)) |>
+  ggplot(aes(x = res, y = k, fill = factor(n_resamples))) +
+  geom_density_ridges() +
+  facet_wrap(~runs)
+
+# try n_resamples 5, 10, 20?
+```
+
+```{r}
 tic()
-p <- c(2)
+p <- c(2, 3)
 n <- c(100)
-n_resamples <- c(30, 50, 70)
+n_resamples <- c(70)
 prop_resample <- 0.9
-runs <- c(20, 40)
-k <- 2:8
+runs <- c(100)
+k <- 2:15
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i * p * n * k
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+end_result |>
+  mutate(k = factor(k),
+         p = factor(p)) |>
+  ggplot(aes(x = k, y = res, fill = factor(p))) +
+  geom_boxplot() +
+  facet_wrap(~runs) +
+  theme_minimal()
+
+write.csv(end_result,
+          file = here::here("data/simulation_norm_combination_run_2.csv"))
+```
+```{r}
+tic()
+p <- c(2, 3, 4, 5)
+n <- c(100)
+n_resamples <- c(70)
+prop_resample <- 0.9
+runs <- c(100)
+k <- 2:20
 starting_seed <- 599
 
 grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
@@ -113,63 +160,16 @@ end_result <- grid_result |>
 toc()
 
 write.csv(end_result,
-          file = here::here("data/simulation_unif_combination_run_1.csv"))
-```
+          file = here::here("data/simulation_norm_combination_run_3.csv"))
 
-```{r}
+end_result <- read.csv(file = here::here("data/simulation_norm_combination_run_3.csv"))
+
 end_result |>
-  mutate(k = factor(k)) |>
-  ggplot(aes(x = k, y = res, fill = factor(n_resamples))) +
+  mutate(k = factor(k),
+         p = factor(p)) |>
+  ggplot(aes(x = k, y = res, fill = factor(p))) +
   geom_boxplot() +
-  facet_wrap(~runs) +
   theme_minimal()
 
-
-end_result |>
-  mutate(k = factor(k)) |>
-  ggplot(aes(x = res, y = k, fill = factor(n_resamples))) +
-  geom_density_ridges() +
-  facet_wrap(~runs)
-
-# try n_resamples 5, 10, 20?
 ```
 
-```{r}
-tic()
-p <- c(2)
-n <- c(100)
-n_resamples <- c(70)
-prop_resample <- 0.9
-runs <- c(100)
-k <- 2:8
-starting_seed <- 599
-
-grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
-  rowwise() |>
-  mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i * p * n * k
-    set.seed(temp_seed) # very important to set this
-    data <- data.frame(replicate(p, rnorm(n)))
-    resample_matrices <- resample_function(data = data,
-                                           formula = ~ .,
-                                           k = k,
-                                           number_of_resamples = n_resamples,
-                                           proportion_resample = prop_resample,
-                                           starting_seed = temp_seed)
-    m_matrix <- mean_matrix(resample_matrices)
-    return(squared_distance_from_one(m_matrix))
-
-  })))
-
-end_result <- grid_result |>
-  unnest(res) |>
-  unnest(res)
-toc()
-
-end_result |>
-  mutate(k = factor(k)) |>
-  ggplot(aes(x = k, y = res, fill = factor(n_resamples))) +
-  geom_boxplot() +
-  facet_wrap(~runs) +
-  theme_minimal()
-```
