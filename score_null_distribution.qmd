@@ -167,8 +167,13 @@ end_result <- read.csv(file = here::here("data/simulation_norm_combination_run_3
 end_result |>
   mutate(k = factor(k),
          p = factor(p)) |>
-  ggplot(aes(x = k, y = res, fill = factor(p))) +
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = Score, fill = p)) +
   geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Uniform Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9 and n=100 per sample (starting seed = 599)") +
   theme_minimal()
 
 ```
