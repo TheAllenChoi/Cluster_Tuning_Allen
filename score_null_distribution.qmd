@@ -127,20 +127,21 @@ end_result |>
 write.csv(end_result,
           file = here::here("data/simulation_norm_combination_run_2.csv"))
 ```
+
 ```{r}
 tic()
-p <- c(2, 3, 4, 5)
+p <- c(2, 3, 4)
 n <- c(100)
 n_resamples <- c(70)
-prop_resample <- 0.9
-runs <- c(100)
-k <- 2:20
+prop_resample <- 0.95
+runs <- c(200)
+k <- 2:15
 starting_seed <- 599
 
 grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
   rowwise() |>
   mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i * p * n * k
+    temp_seed <- starting_seed * i * p * n
     set.seed(temp_seed) # very important to set this
     data <- data.frame(replicate(p, rnorm(n)))
     resample_matrices <- resample_function(data = data,
@@ -180,18 +181,18 @@ end_result |>
 
 ```{r}
 tic()
-p <- c(2, 3, 4, 5)
+p <- c(2, 3, 4)
 n <- c(100)
 n_resamples <- c(70)
 prop_resample <- 0.9
-runs <- c(100)
-k <- 2:20
+runs <- c(200)
+k <- 2:15
 starting_seed <- 599
 
 grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
   rowwise() |>
   mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i * p * n * k
+    temp_seed <- starting_seed * i * p * n
     set.seed(temp_seed) # very important to set this
     data <- data.frame(replicate(p, runif(n)))
     resample_matrices <- resample_function(data = data,
