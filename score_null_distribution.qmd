@@ -14,7 +14,7 @@ library(doParallel)
 library(MASS)
 library(ggridges)
 library(tictoc)
-registerDoParallel(cores = detectCores() - 1)
+registerDoParallel(cores = detectCores())
 set.seed(599)
 
 source("functions.R")
@@ -227,5 +227,286 @@ end_result |>
     "Scores on a Random p-Dimensional Uniform Distribution") +
   labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
   theme_minimal()
+```
+## Is there convergence in distribution as n_resamples -> inf?
+
+```{r}
+tic()
+p <- c(2)
+n <- c(100)
+n_resamples <- c(10, 30, 50)
+prop_resample <- 0.9
+runs <- c(50)
+k <- 2:10
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i * p * n
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+end_result |>
+  mutate(k = factor(k),
+         n_resamples = factor(n_resamples)) |>
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = Score, fill = n_resamples)) +
+  geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Uniform Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  theme_minimal()
+```
+## Diff resample test
+```{r}
+tic()
+p <- c(2)
+n <- c(100)
+n_resamples <- c(20, 100, 200)
+prop_resample <- c(0.5, 0.9)
+runs <- c(100)
+k <- 2:10
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i * p * n
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+write.csv(end_result,
+          file = here::here("data/simulation_norm_resamples_diff_runs.csv"))
+
+end_result <- read.csv(file = here::here("data/simulation_norm_resamples_diff_runs.csv"))
+
+end_result |>
+  mutate(k = factor(k),
+         n_resamples = factor(n_resamples)) |>
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = Score, fill = n_resamples)) +
+  geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Uniform Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  theme_minimal() +
+  facet_wrap(~factor(prop_resample))
+```
+## Diff resample test 2
+```{r}
+tic()
+p <- c(2)
+n <- c(100)
+n_resamples <- c(50, 100)
+prop_resample <- c(0.2, 0.5, 0.9)
+runs <- c(100)
+k <- 2:15
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i * p * n
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+write.csv(end_result,
+          file = here::here("data/simulation_norm_resamples_diff_runs_2.csv"))
+
+end_result <- read.csv(file = here::here("data/simulation_norm_resamples_diff_runs_2.csv"))
+
+end_result |>
+  mutate(k = factor(k),
+         n_resamples = factor(n_resamples)) |>
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = Score, fill = n_resamples)) +
+  geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Uniform Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  theme_minimal() +
+  facet_wrap(~factor(prop_resample))
+
+end_result |>
+  mutate(k = factor(k),
+         n_resamples = factor(n_resamples)) |>
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = log(Score), fill = n_resamples)) +
+  geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Uniform Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  theme_minimal() +
+  facet_wrap(~factor(prop_resample))
+```
+
+
+```{r}
+end_result |> 
+  filter(n_resamples == 100,
+         prop_resample == 0.2) |> 
+  mutate(res = log(res)) |> 
+  ggplot(aes(x = factor(k), y = res)) +
+  geom_boxplot()
+
+end_result |> 
+  filter(n_resamples == 100,
+         prop_resample == 0.2) |> 
+  group_by(factor(k)) |> 
+  summarize(var = var(log(res)))
+```
+
+```{r}
+
+```
+
+
+```{r}
+resample_function <- function(data = data,
+                              formula = ~ .,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599) {
+  # tictoc::tic()
+  data <- data |>
+    drop_na()
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+  for (i in 1:number_of_resamples) {
+                       # Reproducibility over parallel
+                       set.seed(starting_seed + i)
+                       # print(starting_seed + i)
+                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+
+                       random_sample <- data |>
+                         filter(index %in% sample(index, proportion_resample * nrow(data)))
+                       
+                       # print(nrow(random_sample))
+
+                       kmeans <- k_means(num_clusters = k) |>
+                         fit({{formula}},
+                             data = random_sample |>
+                               dplyr::select(-index))
+                       
+                       print(ggplot(data = random_sample, aes(x = X1, y = X2, color = extract_cluster_assignment(kmeans)$.cluster)) +
+                              geom_point())
+
+                       intermediate <- data.frame(random_sample$index,
+                                                  extract_cluster_assignment(kmeans) |>
+                                                    mutate(.cluster = as.character(.cluster)),
+                                                  stringsAsFactors = FALSE)
+                       colnames(intermediate) <- c("index", "cluster")
+
+                       for (c in unique(intermediate$cluster)) {
+                         idx <- intermediate[intermediate$cluster == c, ]$index
+
+                         # Check that the index list is not length 1 for purposes of n > m for combn
+                         # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
+                         # value as param inside combn
+                         if (length(idx) > 1) {
+                           idx <- sort(idx)
+                           ones <- t(combn(idx, 2))
+                           result_matrix[ones[, 1], ones[, 2]] <- 1
+                         }
+
+                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                       }
+                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+                       results[[i]] <- result_matrix
+                     }
+  # tictoc::toc()
+  return(results)
+}
+```
+
+
+## stability test
+```{r}
+prop_resample <- 0.5
+temp_seed <- 4193000
+set.seed(4193000)
+data <- data.frame(replicate(2, rnorm(100)))
+k = 2
+n_resamples = 50
+resample_matrices <- resample_function(data = data,
+                                      formula = ~ .,
+                                      k = k,
+                                      number_of_resamples = n_resamples,
+                                     proportion_resample = prop_resample,
+                                      starting_seed = temp_seed)
+
+View(resample_matrices)
+ggplot(data = data, aes(x = X1, y = X2)) + geom_point()
+m_matrix <- mean_matrix(resample_matrices)
+image(m_matrix)
+squared_distance_from_one(m_matrix)
+
+
+temp_seed <- 4073200
+set.seed(4073200)
+data <- data.frame(replicate(2, rnorm(100)))
+resample_matrices <- resample_function(data = data,
+                                      formula = ~ .,
+                                      k = k,
+                                      number_of_resamples = n_resamples,
+                                      proportion_resample = prop_resample,
+                                      starting_seed = temp_seed)
+ggplot(data = data, aes(x = X1, y = X2)) + geom_point()
+m_matrix <- mean_matrix(resample_matrices)
+image(m_matrix)
 ```
 
