@@ -1,0 +1,110 @@
+---
+title: "distances_metric_investigation"
+format: html
+---
+
+We want to ask ourselves what the distribution of the distances are within a normal null distribution. It SHOULD be normal... but does it overlap nicely with the distribution of the means themselves and not the metric? What do the actual distribution of the means look like?
+
+Initial testing of the means lead to a severely skewed distribution where there were barely any values close to 0.
+
+Should we see more density in the tails for better clustered data? We should, since data that is better clustered means that points are more easily "bucketable" into a certain cluster group.
+
+```{r}
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+library(MASS)
+library(ggridges)
+library(tictoc)
+registerDoParallel(cores = detectCores())
+set.seed(599)
+
+source("functions.R")
+```
+
+# Normal distribution
+
+```{r}
+#| warning: false
+for (i in 2:10) {
+  # starting seed
+  starting_seed <- 599
+  # number of simulations
+  num_sim <- 2
+  # dim of data
+  p <- 5
+  # number of data points per sim
+  n <- 100
+  # number of clusters
+  k <- i
+  
+  results <- lapply(c(1:num_sim), function(x) {
+      temp_seed <- starting_seed * x
+      set.seed(temp_seed) # very important to set this
+      data <- data.frame(replicate(p, rnorm(n)))
+      list_of_matrix <- resample_function(data = data,
+                                          k = k,
+                                          number_of_resamples = 100,
+                                          proportion_resample = 0.5)
+      m_matrix <- mean_matrix(list_of_matrix)
+      dist_matrix <- as.matrix(dist(data, method = "euclidean"))
+      return(list(m_matrix = as.vector(m_matrix),
+                  dist_matrix = as.vector(dist_matrix)))
+  })
+  
+  print(results[[1]]$m_matrix |> 
+    data.frame() |> 
+    ggplot(aes(x = `results..1...m_matrix`)) +
+    geom_density() +
+    ggtitle(paste0("Distribution of means for", " i ", "clusters"))
+    )
+}
+
+print(results[[1]]$dist_matrix |>
+  data.frame() |>
+  ggplot(aes(x = `results..1...dist_matrix`)) +
+  geom_density() +
+  ggtitle(paste0("Distribution of distances for", " i ", "clusters"))
+  )
+```
+
+## Uniform Dist
+
+```{r}
+# starting seed
+starting_seed <- 599
+# number of simulations
+num_sim <- 2
+# dim of data
+p <- 100
+# number of data points per sim
+n <- 100
+
+results <- lapply(c(1:num_sim), function(x) {
+    temp_seed <- starting_seed * x
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, runif(n)))
+    list_of_matrix <- resample_function(data = data,
+                                        k = 3,
+                                        number_of_resamples = 70,
+                                        proportion_resample = 0.5)
+    m_matrix <- mean_matrix(list_of_matrix)
+    dist_matrix <- as.matrix(dist(data, method = "euclidean"))
+    return(list(m_matrix = as.vector(m_matrix),
+                dist_matrix = as.vector(dist_matrix)))
+})
+
+results[[1]]$m_matrix |> 
+  hist()
+
+
+print(results[[1]]$dist_matrix |>
+  data.frame() |>
+  ggplot(aes(x = `results..1...dist_matrix`)) +
+  geom_density() +
+  ggtitle(paste0("Distribution of distances for ", p," clusters"))
+  )
+```

@@ -6,11 +6,8 @@ editor: visual
 
 ## Idea
 
-What principle are you using to measure a "good" cluster?  
-Why does this make sense?
-How would this be tuned - that is, what resampling does it need?
-Does this apply in general, or only for a particular type of clustering algorithm?
-Link any references that might help support this.
+What principle are you using to measure a "good" cluster?\
+Why does this make sense? How would this be tuned - that is, what resampling does it need? Does this apply in general, or only for a particular type of clustering algorithm? Link any references that might help support this.
 
 ## Metric Calculation
 
@@ -18,8 +15,8 @@ Write a function here that calculates your "tuning metric" for a particular valu
 
 ## Experiments
 
-On either simluated data or real data with known structure, run several replications of your experiment for each of various k's.  Make sure to set a seed.
+On either simluated data or real data with known structure, run several replications of your experiment for each of various k's. Make sure to set a seed.
 
 ## Results
 
-What did your experiments show?  Why do you think this happened? Is there anything promising here?
+What did your experiments show? Why do you think this happened? Is there anything promising here?

@@ -177,6 +177,18 @@ end_result |>
   labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
   theme_minimal()
 
+end_result |>
+  mutate(k = factor(k),
+         p = factor(p)) |>
+  rename(Score = res,
+         Clusters = k) |> 
+  ggplot(aes(x = Clusters, y = log(Score), fill = p)) +
+  geom_boxplot() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Normal Distribution") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  theme_minimal()
+
 ```
 
 ```{r}
@@ -230,50 +242,6 @@ end_result |>
 ```
 ## Is there convergence in distribution as n_resamples -> inf?
 
-```{r}
-tic()
-p <- c(2)
-n <- c(100)
-n_resamples <- c(10, 30, 50)
-prop_resample <- 0.9
-runs <- c(50)
-k <- 2:10
-starting_seed <- 599
-
-grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
-  rowwise() |>
-  mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * i * p * n
-    set.seed(temp_seed) # very important to set this
-    data <- data.frame(replicate(p, rnorm(n)))
-    resample_matrices <- resample_function(data = data,
-                                           formula = ~ .,
-                                           k = k,
-                                           number_of_resamples = n_resamples,
-                                           proportion_resample = prop_resample,
-                                           starting_seed = temp_seed)
-    m_matrix <- mean_matrix(resample_matrices)
-    return(squared_distance_from_one(m_matrix))
-
-  })))
-
-end_result <- grid_result |>
-  unnest(res) |>
-  unnest(res)
-toc()
-
-end_result |>
-  mutate(k = factor(k),
-         n_resamples = factor(n_resamples)) |>
-  rename(Score = res,
-         Clusters = k) |> 
-  ggplot(aes(x = Clusters, y = Score, fill = n_resamples)) +
-  geom_boxplot() +
-  ggtitle(
-    "Scores on a Random p-Dimensional Uniform Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
-  theme_minimal()
-```
 ## Diff resample test
 ```{r}
 tic()
@@ -358,8 +326,8 @@ end_result <- grid_result |>
   unnest(res)
 toc()
 
-write.csv(end_result,
-          file = here::here("data/simulation_norm_resamples_diff_runs_2.csv"))
+# write.csv(end_result,
+#           file = here::here("data/simulation_norm_resamples_diff_runs_2.csv"))
 
 end_result <- read.csv(file = here::here("data/simulation_norm_resamples_diff_runs_2.csv"))
 
@@ -372,20 +340,7 @@ end_result |>
   geom_boxplot() +
   ggtitle(
     "Scores on a Random p-Dimensional Uniform Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
-  theme_minimal() +
-  facet_wrap(~factor(prop_resample))
-
-end_result |>
-  mutate(k = factor(k),
-         n_resamples = factor(n_resamples)) |>
-  rename(Score = res,
-         Clusters = k) |> 
-  ggplot(aes(x = Clusters, y = log(Score), fill = n_resamples)) +
-  geom_boxplot() +
-  ggtitle(
-    "Scores on a Random p-Dimensional Uniform Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with n=100 per sample (starting seed = 599)") +
   theme_minimal() +
   facet_wrap(~factor(prop_resample))
 
@@ -399,7 +354,7 @@ end_result |>
   geom_boxplot() +
   ggtitle(
     "Scores on a Random p-Dimensional Uniform Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with n=100 per sample (starting seed = 599)") +
   theme_minimal() +
   facet_wrap(~factor(prop_resample))
 ```
@@ -454,13 +409,15 @@ end_result <- grid_result |>
 toc()
 
 end_result |> 
-  mutate(res = res) |> 
+  mutate(res = log(res)) |> 
   ggplot(aes(x = factor(k), y = res)) +
-  geom_boxplot()
+  geom_boxplot() +
+  theme_minimal() +
+  ggtitle("2-D Normal Distribution Scores, n = 200, n_resamples = 200, prop_resample = 0.1, 200 runs")
 
 end_result |> 
   group_by(factor(k)) |> 
-  summarize(var = sd(res))
+  summarize(var = sd(log(res)))
 ```
 
 
