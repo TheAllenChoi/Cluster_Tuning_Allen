@@ -3,7 +3,8 @@ resample_function <- function(data = data,
                               k = 3,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
-                              starting_seed = 599) {
+                              starting_seed = 599,
+                              algorithm = "kmeans") {
   # tictoc::tic()
   data <- data |>
     drop_na()
@@ -20,13 +21,23 @@ resample_function <- function(data = data,
                        random_sample <- data |>
                          filter(index %in% sample(index, proportion_resample * nrow(data)))
 
-                       kmeans <- k_means(num_clusters = k) |>
-                         fit({{formula}},
-                             data = random_sample |>
-                               select(-index))
+                       if (algorithm == "kmeans") {
+                         cluster_assigned <- k_means(num_clusters = k) |>
+                           fit({{formula}},
+                               data = random_sample |>
+                                 select(-index))
+                       } else if (algorithm == "hier_clust") {
+                         cluster_assigned <- hier_clust(num_clusters = k) |>
+                           fit({{formula}},
+                               data = random_sample |>
+                                 select(-index))
+                       } else {
+                         stop("Algorithm is not supported. Please select one of (kmeans, hier_clust)")
+                       }
+
 
                        intermediate <- data.frame(random_sample$index,
-                                                  extract_cluster_assignment(kmeans) |>
+                                                  extract_cluster_assignment(cluster_assigned) |>
                                                     mutate(.cluster = as.character(.cluster)),
                                                   stringsAsFactors = FALSE)
                        colnames(intermediate) <- c("index", "cluster")
