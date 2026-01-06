@@ -174,7 +174,7 @@ end_result |>
   geom_boxplot() +
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.95, 70 resamples, and n=100 per sample") +
   theme_minimal()
 
 end_result |>
@@ -186,7 +186,7 @@ end_result |>
   geom_boxplot() +
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
-  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample (starting seed = 599)") +
+  labs(subtitle = "100 Runs per Cluster per Dimension with a resample proportion of 0.9, 70 resamples, and n=100 per sample") +
   theme_minimal()
 
 ```
@@ -339,7 +339,7 @@ end_result |>
   ggplot(aes(x = Clusters, y = Score, fill = n_resamples)) +
   geom_boxplot() +
   ggtitle(
-    "Scores on a Random p-Dimensional Uniform Distribution") +
+    "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster per Dimension with n=100 per sample (starting seed = 599)") +
   theme_minimal() +
   facet_wrap(~factor(prop_resample))
@@ -350,10 +350,10 @@ end_result |>
          n_resamples = factor(n_resamples)) |>
   rename(Score = res,
          Clusters = k) |> 
-  ggplot(aes(x = Clusters, y = log(Score), fill = n_resamples)) +
+  ggplot(aes(x = Clusters, y = log10(Score), fill = n_resamples)) +
   geom_boxplot() +
   ggtitle(
-    "Scores on a Random p-Dimensional Uniform Distribution") +
+    "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster per Dimension with n=100 per sample (starting seed = 599)") +
   theme_minimal() +
   facet_wrap(~factor(prop_resample))

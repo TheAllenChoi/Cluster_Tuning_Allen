@@ -1,0 +1,116 @@
+---
+title: "resampling_percentage"
+format: html
+---
+
+## Analyses done on Normal Distribution
+
+```{r}
+#| message: false
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+library(MASS)
+library(ggridges)
+library(tictoc)
+registerDoParallel(cores = detectCores())
+set.seed(599)
+
+source("functions.R")
+```
+
+## Changing Resampling % Result on Null
+
+```{r}
+tic()
+p <- c(2, 5)
+n <- c(100)
+n_resamples <- c(100)
+prop_resample <- c(0.2, 0.5, 0.8)
+runs <- c(100)
+k <- 2:10
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * i * p * n
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+write.csv(end_result, file = here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
+end_result <- read.csv(file = here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
+
+end_result |> 
+  mutate(Score = res,
+         prop_resample = paste0(prop_resample * 100, "%"),
+         p = factor(p),
+         k = factor(k)) |> 
+  ggplot(aes(x = k, y = Score, fill = p)) +
+  geom_boxplot() +
+  theme_minimal() +
+  ggtitle(
+    "Scores on a Random p-Dimensional Normal Distribution, Facet by Resample %") +
+  labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
+  facet_wrap(~prop_resample)
+
+end_result |> 
+  group_by(factor(k), factor(prop_resample)) |> 
+  filter(prop_resample == 0.2) |> 
+  summarize(var = sd(log(res)))
+```
+
+![](images/clipboard-980648386.png)
+
+```{r}
+set.seed(551)
+for (i in 2:10) {
+  print(paste0("With ", i, " Clusters"))
+  data <- penguins |> 
+    drop_na() |> 
+    dplyr::select(bill_length_mm, flipper_length_mm) |> 
+    mutate(bill_length_mm = scale(bill_length_mm),
+           flipper_length_mm = scale(flipper_length_mm))
+  matrix <- resample_function(data, k = i,
+                              number_of_resamples = 100,
+                              proportion_resample = 0.8)
+  
+  # print(image(mean_matrix(matrix)))
+  print(squared_distance_from_one(mean_matrix(matrix)))
+  print(data.frame((as.vector(mean_matrix(matrix)))) |> 
+          ggplot(aes(x = `X.as.vector.mean_matrix.matrix...`)) +
+          geom_histogram() +
+          theme_minimal() +
+          ggtitle(paste0("Distribution of Values inside Mean Matrix for ", i, " clusters")) +
+          labs(x = "Values",
+               y = "Count")
+  )
+  
+}
+```
+
+```{r}
+species <- penguins |> drop_na() |> dplyr::select(species) |> pull()
+data |> 
+  ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
+  geom_point() +
+  theme_minimal()
+```
