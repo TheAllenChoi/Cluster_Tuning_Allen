@@ -66,16 +66,10 @@ for (i in 2:10) {
 print(results[[1]]$dist_matrix |>
   data.frame() |>
   ggplot(aes(x = `results..1...dist_matrix`)) +
-<<<<<<< HEAD
-  geom_density() +
-  ggtitle(paste0("Distribution of distances for ", i, " clusters"))
-  )
-=======
   geom_histogram() +
   ggtitle(paste0("Distribution of distances for ", p, " dimensonal Normal Distribution"))
   ) +
   theme_minimal()
->>>>>>> 586b121d19bfb3b6d0c574527b2058901439e371
 ```
 
 ## Uniform Dist
