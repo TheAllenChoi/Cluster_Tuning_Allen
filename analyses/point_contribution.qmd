@@ -1,0 +1,228 @@
+---
+title: "point_participation"
+format: html
+---
+```{r}
+#| message: false
+library(tidyclust)
+library(tidyverse)
+library(tidymodels)
+library(plotly)
+library(foreach)
+library(doParallel)
+library(MASS)
+library(ggridges)
+library(tictoc)
+registerDoParallel(cores = detectCores())
+set.seed(599)
+
+source("functions.R")
+```
+
+```{r}
+temp_seed <- 1
+set.seed(1)
+data <- data.frame(list(x = c(rnorm(25, 10), rnorm(25, 12)),
+                        y = c(rnorm(25, 10), rnorm(25, 12))))
+resample_matrices <- resample_function(data = data,
+                                        formula = ~ .,
+                                        k = 2,
+                                        number_of_resamples = 50,
+                                        proportion_resample = 0.7,
+                                        starting_seed = temp_seed)
+ggplot(data = data, aes(x = x, y = y)) + geom_point()
+m_matrix <- mean_matrix(resample_matrices)
+image(m_matrix)
+
+a <- resample_matrices[[1]]
+```
+## strange base R matrix behavior
+```{r}
+set.seed(1)
+data <- data.frame(list(x = c(rnorm(25, 10), rnorm(25, 12)),
+                        y = c(rnorm(25, 10), rnorm(25, 12))))
+  # tictoc::tic()
+  data <- data |>
+    drop_na()
+  data$index <- 1:nrow(data)
+  results <- list()
+
+
+ set.seed(2)
+ result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+
+ random_sample <- data |>
+   filter(index %in% sample(index, 0.2 * nrow(data)))
+
+ cluster_assigned <- k_means(num_clusters = 2) |>
+   fit({{~ .}},
+       data = random_sample |>
+         dplyr::select(-index))
+
+
+ intermediate <- data.frame(random_sample$index,
+                            extract_cluster_assignment(cluster_assigned) |>
+                              mutate(.cluster = as.character(.cluster)),
+                            stringsAsFactors = FALSE)
+ colnames(intermediate) <- c("index", "cluster")
+
+ for (c in unique(intermediate$cluster)) {
+   idx <- intermediate[intermediate$cluster == c, ]$index
+
+   # Check that the index list is not length 1 for purposes of n > m for combn
+   # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
+   # value as param inside combn
+   if (length(idx) > 1) {
+     idx <- sort(idx)
+     ones <- t(combn(idx, 2))
+     result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
+   }
+
+   neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+   print(neg_one_idx)
+   result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
+ }
+ # result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+ image(result_matrix)
+            
+
+```
+
+
+## old_resample
+```{r}
+old_resample_function <- function(data = data,
+                              formula = ~ .,
+                              k = 3,
+                              number_of_resamples = 15,
+                              proportion_resample = 0.9,
+                              starting_seed = 599,
+                              algorithm = "kmeans") {
+  # tictoc::tic()
+  data <- data |>
+    drop_na()
+  data$index <- 1:nrow(data)
+  results <- list()
+
+  # For loop
+  results <- foreach(i = 1:number_of_resamples,
+                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
+                       # Reproducibility over parallel
+                       set.seed(starting_seed + i)
+                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+
+                       random_sample <- data |>
+                         filter(index %in% sample(index, proportion_resample * nrow(data)))
+
+                       if (algorithm == "kmeans") {
+                         cluster_assigned <- k_means(num_clusters = k) |>
+                           fit({{formula}},
+                               data = random_sample |>
+                                 select(-index))
+                       } else if (algorithm == "hier_clust") {
+                         cluster_assigned <- hier_clust(num_clusters = k) |>
+                           fit({{formula}},
+                               data = random_sample |>
+                                 select(-index))
+                       } else {
+                         stop("Algorithm is not supported. Please select one of (kmeans, hier_clust)")
+                       }
+
+
+                       intermediate <- data.frame(random_sample$index,
+                                                  extract_cluster_assignment(cluster_assigned) |>
+                                                    mutate(.cluster = as.character(.cluster)),
+                                                  stringsAsFactors = FALSE)
+                       colnames(intermediate) <- c("index", "cluster")
+
+                       for (c in unique(intermediate$cluster)) {
+                         idx <- intermediate[intermediate$cluster == c, ]$index
+
+                         # Check that the index list is not length 1 for purposes of n > m for combn
+                         # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
+                         # value as param inside combn
+                         if (length(idx) > 1) {
+                           idx <- sort(idx)
+                           ones <- t(combn(idx, 2))
+                           result_matrix[ones[, 1], ones[, 2]] <- 1
+                         }
+
+                         # Note for future self: This calculates the indices, even across y=x line
+                         # which means we are doing double the work for this part.
+                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                       }
+                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
+                       result_matrix
+                     }
+  # tictoc::toc()
+  return(results)
+}
+```
+
+
+## k = 2
+```{r}
+penguins <- penguins |> 
+  dplyr::select(bill_length_mm, flipper_length_mm) |> 
+  mutate(bill_length_mm = scale(bill_length_mm),
+         flipper_length_mm = scale(flipper_length_mm))
+tic()
+matrix <- resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 2)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+tic()
+matrix <- old_resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 2)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+```
+
+## k = 3
+```{r}
+penguins <- penguins |> 
+  dplyr::select(bill_length_mm, flipper_length_mm) |> 
+  mutate(bill_length_mm = scale(bill_length_mm),
+         flipper_length_mm = scale(flipper_length_mm))
+tic()
+matrix <- resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 3)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+tic()
+matrix <- old_resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 3)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+```
+## k = 4
+```{r}
+penguins <- penguins |> 
+  dplyr::select(bill_length_mm, flipper_length_mm) |> 
+  mutate(bill_length_mm = scale(bill_length_mm),
+         flipper_length_mm = scale(flipper_length_mm))
+tic()
+matrix <- resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 4)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+
+tic()
+matrix <- old_resample_function(penguins,
+                            proportion_resample = 0.8,
+                            number_of_resamples = 100,
+                            k = 4)
+squared_distance_from_one(mean_matrix(matrix))
+toc()
+```
