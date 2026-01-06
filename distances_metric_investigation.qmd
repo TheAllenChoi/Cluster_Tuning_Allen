@@ -67,7 +67,7 @@ print(results[[1]]$dist_matrix |>
   data.frame() |>
   ggplot(aes(x = `results..1...dist_matrix`)) +
   geom_density() +
-  ggtitle(paste0("Distribution of distances for", " i ", "clusters"))
+  ggtitle(paste0("Distribution of distances for ", i, " clusters"))
   )
 ```
 

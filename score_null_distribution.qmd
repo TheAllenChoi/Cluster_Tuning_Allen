@@ -520,3 +520,50 @@ m_matrix <- mean_matrix(resample_matrices)
 image(m_matrix)
 ```
 
+```{r}
+tic()
+m_list <- resample_function(data = penguins |> dplyr::select(bill_length_mm, bill_depth_mm),
+                            number_of_resamples = 30,
+                            algorithm = "hier_clust")
+toc()
+
+image(mean_matrix(m_list))
+
+
+tic()
+m_list <- resample_function(data = penguins |> dplyr::select(bill_length_mm, bill_depth_mm),
+                            number_of_resamples = 30,
+                            algorithm = "kmeans")
+toc()
+
+image(mean_matrix(m_list))
+```
+
+```{r}
+## For a specified range of clusters, computes the cRab score for each cluster.
+best_clust <- function(data = data,
+                       formula = ~ .,
+                       k = c(2),
+                       number_of_resamples = 15,
+                       proportion_resample = 0.9,
+                       starting_seed = 599,
+                       algorithm = "kmeans") {
+  
+  scores <- lapply(c(k), function(i) {
+    resample_matrices <- resample_function(data = data,
+                                           k = i,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed,
+                                           algorithm = algorithm)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+  })
+  
+  # return(data.frame(num_clust = k, score = scores))
+}
+
+best_clust(data = data.frame(replicate(2, runif(30))),
+           k = c(2, 3))
+```
+
