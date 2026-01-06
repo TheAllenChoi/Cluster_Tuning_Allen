@@ -3,8 +3,7 @@ resample_function <- function(data = data,
                               k = 3,
                               number_of_resamples = 15,
                               proportion_resample = 0.9,
-                              starting_seed = 599,
-                              algorithm = "kmeans") {
+                              starting_seed = 599) {
   # tictoc::tic()
   data <- data |>
     drop_na()
@@ -21,23 +20,13 @@ resample_function <- function(data = data,
                        random_sample <- data |>
                          filter(index %in% sample(index, proportion_resample * nrow(data)))
 
-                       if (algorithm == "kmeans") {
-                         cluster_assigned <- k_means(num_clusters = k) |>
-                           fit({{formula}},
-                               data = random_sample |>
-                                 select(-index))
-                       } else if (algorithm == "hier_clust") {
-                         cluster_assigned <- hier_clust(num_clusters = k) |>
-                           fit({{formula}},
-                               data = random_sample |>
-                                 select(-index))
-                       } else {
-                         stop("Algorithm is not supported. Please select one of (kmeans, hier_clust)")
-                       }
-
+                       kmeans <- k_means(num_clusters = k) |>
+                         fit({{formula}},
+                             data = random_sample |>
+                               select(-index))
 
                        intermediate <- data.frame(random_sample$index,
-                                                  extract_cluster_assignment(cluster_assigned) |>
+                                                  extract_cluster_assignment(kmeans) |>
                                                     mutate(.cluster = as.character(.cluster)),
                                                   stringsAsFactors = FALSE)
                        colnames(intermediate) <- c("index", "cluster")
@@ -51,13 +40,11 @@ resample_function <- function(data = data,
                          if (length(idx) > 1) {
                            idx <- sort(idx)
                            ones <- t(combn(idx, 2))
-                           result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
+                           result_matrix[ones[, 1], ones[, 2]] <- 1
                          }
 
-                         # Note for future self: This calculates the indices, even across y=x line
-                         # which means we are doing double the work for this part.
                          neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
-                         result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
+                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
                        }
                        result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
                        result_matrix
