@@ -51,11 +51,13 @@ resample_function <- function(data = data,
                          if (length(idx) > 1) {
                            idx <- sort(idx)
                            ones <- t(combn(idx, 2))
-                           result_matrix[ones[, 1], ones[, 2]] <- 1
+                           result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
                          }
 
+                         # Note for future self: This calculates the indices, even across y=x line
+                         # which means we are doing double the work for this part.
                          neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
-                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
+                         result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
                        }
                        result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
                        result_matrix
