@@ -19,210 +19,153 @@ set.seed(599)
 source("functions.R")
 ```
 
+## Point Contribution
+
 ```{r}
-temp_seed <- 1
-set.seed(1)
-data <- data.frame(list(x = c(rnorm(25, 10), rnorm(25, 12)),
-                        y = c(rnorm(25, 10), rnorm(25, 12))))
-resample_matrices <- resample_function(data = data,
-                                        formula = ~ .,
-                                        k = 2,
-                                        number_of_resamples = 50,
-                                        proportion_resample = 0.7,
-                                        starting_seed = temp_seed)
-ggplot(data = data, aes(x = x, y = y)) + geom_point()
+# Given a list of resample matrices, calculate each observation's
+# contribution to the cRab Score 
+
+penguins <- penguins |> 
+  dplyr::select(bill_length_mm, flipper_length_mm) |> 
+  mutate(bill_length_mm = scale(bill_length_mm),
+         flipper_length_mm = scale(flipper_length_mm)) |> 
+  drop_na()
+
+resample_matrices <- resample_function(penguins,
+                                       number_of_resamples = 40,
+                                       proportion_resample = 0.8)
 m_matrix <- mean_matrix(resample_matrices)
-image(m_matrix)
 
-a <- resample_matrices[[1]]
-```
-## strange base R matrix behavior
-```{r}
-set.seed(1)
-data <- data.frame(list(x = c(rnorm(25, 10), rnorm(25, 12)),
-                        y = c(rnorm(25, 10), rnorm(25, 12))))
-  # tictoc::tic()
-  data <- data |>
-    drop_na()
-  data$index <- 1:nrow(data)
-  results <- list()
-
-
- set.seed(2)
- result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
-
- random_sample <- data |>
-   filter(index %in% sample(index, 0.2 * nrow(data)))
-
- cluster_assigned <- k_means(num_clusters = 2) |>
-   fit({{~ .}},
-       data = random_sample |>
-         dplyr::select(-index))
-
-
- intermediate <- data.frame(random_sample$index,
-                            extract_cluster_assignment(cluster_assigned) |>
-                              mutate(.cluster = as.character(.cluster)),
-                            stringsAsFactors = FALSE)
- colnames(intermediate) <- c("index", "cluster")
-
- for (c in unique(intermediate$cluster)) {
-   idx <- intermediate[intermediate$cluster == c, ]$index
-
-   # Check that the index list is not length 1 for purposes of n > m for combn
-   # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
-   # value as param inside combn
-   if (length(idx) > 1) {
-     idx <- sort(idx)
-     ones <- t(combn(idx, 2))
-     result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
-   }
-
-   neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
-   print(neg_one_idx)
-   result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
- }
- # result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
- image(result_matrix)
-            
-
-```
-
-
-## old_resample
-```{r}
-old_resample_function <- function(data = data,
-                              formula = ~ .,
-                              k = 3,
-                              number_of_resamples = 15,
-                              proportion_resample = 0.9,
-                              starting_seed = 599,
-                              algorithm = "kmeans") {
-  # tictoc::tic()
-  data <- data |>
-    drop_na()
-  data$index <- 1:nrow(data)
-  results <- list()
-
-  # For loop
-  results <- foreach(i = 1:number_of_resamples,
-                     .packages = c("tidyclust", "dplyr", "tidymodels")) %dopar% {
-                       # Reproducibility over parallel
-                       set.seed(starting_seed + i)
-                       result_matrix <- matrix(0, nrow = nrow(data), ncol = nrow(data))
-
-                       random_sample <- data |>
-                         filter(index %in% sample(index, proportion_resample * nrow(data)))
-
-                       if (algorithm == "kmeans") {
-                         cluster_assigned <- k_means(num_clusters = k) |>
-                           fit({{formula}},
-                               data = random_sample |>
-                                 select(-index))
-                       } else if (algorithm == "hier_clust") {
-                         cluster_assigned <- hier_clust(num_clusters = k) |>
-                           fit({{formula}},
-                               data = random_sample |>
-                                 select(-index))
-                       } else {
-                         stop("Algorithm is not supported. Please select one of (kmeans, hier_clust)")
-                       }
-
-
-                       intermediate <- data.frame(random_sample$index,
-                                                  extract_cluster_assignment(cluster_assigned) |>
-                                                    mutate(.cluster = as.character(.cluster)),
-                                                  stringsAsFactors = FALSE)
-                       colnames(intermediate) <- c("index", "cluster")
-
-                       for (c in unique(intermediate$cluster)) {
-                         idx <- intermediate[intermediate$cluster == c, ]$index
-
-                         # Check that the index list is not length 1 for purposes of n > m for combn
-                         # This also fixes a bug in the previous code where idx was wrongly interpreted as single numerical
-                         # value as param inside combn
-                         if (length(idx) > 1) {
-                           idx <- sort(idx)
-                           ones <- t(combn(idx, 2))
-                           result_matrix[ones[, 1], ones[, 2]] <- 1
-                         }
-
-                         # Note for future self: This calculates the indices, even across y=x line
-                         # which means we are doing double the work for this part.
-                         neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
-                         result_matrix[neg_one_idx[, 1], neg_one_idx[, 2]] <- -1
-                       }
-                       result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
-                       result_matrix
-                     }
-  # tictoc::toc()
-  return(results)
+getPointVecHelper <- function(i, mean_matrix) {
+  # Given a point i and the mean matrix, should
+  # return vector of all values in the mean matrix corresponding to obs i
+  # after removing all NAs and then taking absolute value
+  
+  row <- mean_matrix[i, ]
+  col <- mean_matrix[, i]
+  
+  # We don't care about the order, just the values themselves
+  res_vec <- c(row, col)
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  return(res_vec)
+  
 }
+
+point_contribution <- function(data, mean_matrix) {
+  # Given the original data (the dataset inputted into the resample_matrices function),
+  # and the mean_matrix, returns each observation's contribution to the cRab Score.
+  # We don't necessarily require the second arg to be the mean matrix, for example
+  # it could be resample matrix j.
+  # This is returned as an (index, score) dataframe.
+  
+  # Get a list of lists containing index and index "cRab" score
+  scores <- lapply(c(1:nrow(data)), function(i) {
+    full_vec <- getPointVecHelper(i, mean_matrix)
+    singlePointScore <- mean((1 - full_vec)^2)
+    return(list(index = i, singlePointScore = singlePointScore))
+  })
+  final_df <- do.call(rbind.data.frame, scores)
+  total_score <- mean(final_df$singlePointScore)
+  
+  final_df <- final_df |> 
+    mutate(singlePointContribution = singlePointScore / total_score)
+  
+  return(final_df)
+}
+
+d <- point_contribution(penguins, m_matrix)
+
+test <- lapply(resample_matrices,
+       point_contribution,
+       data = penguins)
+
+do.call(rbind.data.frame, test) |> 
+  group_by(index) |> 
+  summarize(mean = mean(singlePointScore),
+            var = sd(singlePointScore)) |> 
+  arrange(desc(mean))
+
+
+# If we want to find the variability of the cRab score over the resample matrices,
+# the best way is probably just taking the mean with respect to each point and resample matrix,
+# and then getting the distribution per point afterwards, right? Aggregate after
+
+# 
+
+
+
 ```
 
-
-## k = 2
 ```{r}
-penguins <- penguins |> 
-  dplyr::select(bill_length_mm, flipper_length_mm) |> 
-  mutate(bill_length_mm = scale(bill_length_mm),
-         flipper_length_mm = scale(flipper_length_mm))
-tic()
-matrix <- resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 2)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
-tic()
-matrix <- old_resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 2)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
+iris <- iris |> 
+  dplyr::select(Petal.Length, Petal.Width) |> 
+  mutate(Petal.Length = scale(Petal.Length),
+         Petal.Width = scale(Petal.Width)) |> 
+  drop_na()
+
+
+resample_matrices <- resample_function(iris,
+                                       number_of_resamples = 40,
+                                       proportion_resample = 0.8)
+m_matrix <- mean_matrix(resample_matrices)
+
+e <- point_contribution(iris, m_matrix)
+
+
+ggplotly(iris |> 
+  ggplot(aes(x = Petal.Length, y = Petal.Width,
+             color = e$singlePointContribution)) +
+  geom_jitter() +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral") +
+  theme_minimal())
+
+
+## k = 2 this time
+
+iris <- iris |> 
+  dplyr::select(Petal.Length, Petal.Width) |> 
+  mutate(Petal.Length = scale(Petal.Length),
+         Petal.Width = scale(Petal.Width)) |> 
+  drop_na()
+
+
+resample_matrices <- resample_function(iris,
+                                       number_of_resamples = 40,
+                                       proportion_resample = 0.8,
+                                       k = 2)
+m_matrix <- mean_matrix(resample_matrices)
+
+e <- point_contribution(iris, m_matrix)
+
+
+ggplotly(iris |> 
+  ggplot(aes(x = Petal.Length, y = Petal.Width,
+             color = e$singlePointContribution)) +
+  geom_jitter() +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral") +
+  theme_minimal())
 ```
 
-## k = 3
-```{r}
-penguins <- penguins |> 
-  dplyr::select(bill_length_mm, flipper_length_mm) |> 
-  mutate(bill_length_mm = scale(bill_length_mm),
-         flipper_length_mm = scale(flipper_length_mm))
-tic()
-matrix <- resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 3)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
-tic()
-matrix <- old_resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 3)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
-```
-## k = 4
-```{r}
-penguins <- penguins |> 
-  dplyr::select(bill_length_mm, flipper_length_mm) |> 
-  mutate(bill_length_mm = scale(bill_length_mm),
-         flipper_length_mm = scale(flipper_length_mm))
-tic()
-matrix <- resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 4)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
 
-tic()
-matrix <- old_resample_function(penguins,
-                            proportion_resample = 0.8,
-                            number_of_resamples = 100,
-                            k = 4)
-squared_distance_from_one(mean_matrix(matrix))
-toc()
+```{r}
+ggplotly(penguins |> 
+  ggplot(aes(x = bill_length_mm, y = flipper_length_mm,
+             color = d$singlePointContribution)) +
+  geom_jitter() +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral") +
+  theme_minimal())
+
+# penguins_2 <- penguins |> 
+#   mutate(singlePointContribution = d$singlePointContribution)
+# 
+# x <- as.vector(penguins$bill_length_mm)
+# y <- as.vector(penguins$flipper_length_mm)
+# z <- d$singlePointContribution
+# 
+# plot_ly(x = x, y = y, z = z, type = "scatter3d", mode = "markers",
+#         color = z)
 ```
+

@@ -117,7 +117,7 @@ mean_matrix <- function(list_of_matrices = list_of_matrices) {
 squared_distance_from_one <- function(mean_matrix = mean_matrix) {
   res_vec <- as.vector(mean_matrix)
   res_vec <- abs(res_vec[!is.na(res_vec)])
-  return(sum((1 - res_vec)^2))
+  return(mean((1 - res_vec)^2))
 }
 
 image_helper <- function(list_res = list_res) {
