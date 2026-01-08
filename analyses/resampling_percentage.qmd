@@ -19,7 +19,7 @@ library(tictoc)
 registerDoParallel(cores = detectCores())
 set.seed(599)
 
-source("functions.R")
+source(here::here("functions.R"))
 ```
 
 ## Changing Resampling % Result on Null
@@ -78,7 +78,7 @@ end_result |>
   summarize(var = sd(log(res)))
 ```
 
-![](images/clipboard-980648386.png)
+![](images/clipboard-199211594.png)\![\]
 
 ```{r}
 set.seed(551)
