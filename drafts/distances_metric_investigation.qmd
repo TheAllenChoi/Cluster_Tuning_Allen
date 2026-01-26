@@ -118,6 +118,7 @@ print(results[[1]]$dist_matrix |>
   ) +
   theme_minimal()
 ```
+
 ```{r}
 m_matrix <- mean_matrix(resample_function(data = penguins |> dplyr::select(bill_length_mm, bill_depth_mm)))
 

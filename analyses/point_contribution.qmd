@@ -16,7 +16,7 @@ library(tictoc)
 registerDoParallel(cores = detectCores())
 set.seed(599)
 
-source("functions.R")
+source(here::here("functions.R"))
 ```
 
 ## Point Contribution
@@ -33,7 +33,8 @@ penguins <- penguins |>
 
 resample_matrices <- resample_function(penguins,
                                        number_of_resamples = 40,
-                                       proportion_resample = 0.8)
+                                       proportion_resample = 0.8,
+                                       starting_seed = 100)
 m_matrix <- mean_matrix(resample_matrices)
 
 getPointVecHelper <- function(i, mean_matrix) {
@@ -79,20 +80,21 @@ test <- lapply(resample_matrices,
        point_contribution,
        data = penguins)
 
-do.call(rbind.data.frame, test) |> 
+mean_var_single <- do.call(rbind.data.frame, test) |> 
   group_by(index) |> 
   summarize(mean = mean(singlePointScore),
             var = sd(singlePointScore)) |> 
-  arrange(desc(mean))
+  arrange(desc(var))
 
 
 # If we want to find the variability of the cRab score over the resample matrices,
 # the best way is probably just taking the mean with respect to each point and resample matrix,
 # and then getting the distribution per point afterwards, right? Aggregate after
 
-# 
-
-
+indices <- mean_var_single |> 
+  arrange((var)) |> 
+  slice_head(n = 10) |> 
+  pull(index)
 
 ```
 
@@ -106,7 +108,8 @@ iris <- iris |>
 
 resample_matrices <- resample_function(iris,
                                        number_of_resamples = 40,
-                                       proportion_resample = 0.8)
+                                       proportion_resample = 0.8,
+                                       starting_seed = 100)
 m_matrix <- mean_matrix(resample_matrices)
 
 e <- point_contribution(iris, m_matrix)
@@ -114,7 +117,7 @@ e <- point_contribution(iris, m_matrix)
 
 ggplotly(iris |> 
   ggplot(aes(x = Petal.Length, y = Petal.Width,
-             color = e$singlePointContribution)) +
+             color = log(e$singlePointContribution))) +
   geom_jitter() +
   scale_color_distiller(type = "div",
                         palette = "Spectral") +
@@ -133,7 +136,8 @@ iris <- iris |>
 resample_matrices <- resample_function(iris,
                                        number_of_resamples = 40,
                                        proportion_resample = 0.8,
-                                       k = 2)
+                                       k = 2,
+                                       starting_seed = 100)
 m_matrix <- mean_matrix(resample_matrices)
 
 e <- point_contribution(iris, m_matrix)
@@ -141,7 +145,7 @@ e <- point_contribution(iris, m_matrix)
 
 ggplotly(iris |> 
   ggplot(aes(x = Petal.Length, y = Petal.Width,
-             color = e$singlePointContribution)) +
+             color = log(e$singlePointContribution))) +
   geom_jitter() +
   scale_color_distiller(type = "div",
                         palette = "Spectral") +
@@ -152,11 +156,22 @@ ggplotly(iris |>
 ```{r}
 ggplotly(penguins |> 
   ggplot(aes(x = bill_length_mm, y = flipper_length_mm,
-             color = d$singlePointContribution)) +
+             color = log(d$singlePointContribution))) +
   geom_jitter() +
   scale_color_distiller(type = "div",
                         palette = "Spectral") +
   theme_minimal())
+
+
+ggplotly(penguins |> 
+  ggplot(aes(x = bill_length_mm, 
+             y = flipper_length_mm)) +
+  geom_jitter() +
+  geom_point(data = (penguins |> slice(indices)),
+             aes(x = bill_length_mm,
+                 y = flipper_length_mm), color = "red") +
+  theme_minimal())
+
 
 # penguins_2 <- penguins |> 
 #   mutate(singlePointContribution = d$singlePointContribution)
@@ -167,5 +182,8 @@ ggplotly(penguins |>
 # 
 # plot_ly(x = x, y = y, z = z, type = "scatter3d", mode = "markers",
 #         color = z)
+
+
+# Look at the point contributions as they change around as we change the resamples.
 ```
 
