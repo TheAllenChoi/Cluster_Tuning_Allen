@@ -1,0 +1,114 @@
+---
+title: "test_alt_across_k"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(foreach)
+library(doParallel)
+library(cluster)
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+
+source(here::here("functions.R"))
+```
+
+```{r}
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 40,
+                          proportion_resample = 0.9,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed,
+                                           algorithm = algorithm)
+    score <- squared_distance_from_one(mean_matrix(resample_matrices))
+    print(k)
+    print(image(mean_matrix(resample_matrices)))
+    return(list(k = k,
+                cRab = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+
+test <- data.frame(replicate(2, rnorm(2000)))
+
+# crab_k_across(test,
+#               c_vec = c(2, 3))
+
+
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/a1.txt")) |> 
+  slice_sample(prop = 0.33) |> 
+  mutate(V1 = scale(V1),
+         V2 = scale(V2))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res <- crab_k_across(test_data,
+                     c_vec = c(15:25))
+
+res |> 
+  ggplot(aes(x = k, y = cRab)) +
+  geom_line()
+
+res
+
+# resample <- resample_function(test_data, k = 20)
+# 
+# mean <- mean_matrix(resample)
+
+# image(mean)
+```
+
+```{r}
+data <- test_data
+max_k <- 25
+res <- lapply(c(1:max_k), function(i) {
+  WCSS <- kmeans(data,
+                 centers = i,
+                 nstart = 10)$tot.withinss
+  if (i == 1) {
+    s <- data.frame(t(c(NA, NA, NA)))
+  } else {
+    s <- silhouette(kmeans(data, centers = i, nstart = 10)$cluster,
+                  dist(data))
+  }
+  return(data.frame(k = as.vector(i),
+                    WCSS = as.vector(WCSS),
+                    Silhouette = mean(s[, 3])))
+})
+
+bind_rows(res) |> 
+  ggplot(aes(x = k, y = WCSS)) +
+  geom_point() +
+  geom_line() +
+  theme_minimal() +
+  scale_x_continuous(breaks = 1:max_k)
+
+bind_rows(res) |>  
+  ggplot(aes(x = k, y = Silhouette)) +
+  geom_point() + 
+  geom_line() + 
+  theme_minimal() + 
+  scale_x_continuous(breaks = 1:max_k)
+```
+
