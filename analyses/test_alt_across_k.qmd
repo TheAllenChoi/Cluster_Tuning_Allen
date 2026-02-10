@@ -112,3 +112,24 @@ bind_rows(res) |>
   scale_x_continuous(breaks = 1:max_k)
 ```
 
+```{r}
+test_data <- read.table(here::here("thesis/data/s1.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+res <- crab_k_across(test_data,
+                     c_vec = c(2:20))
+res |>
+  ggplot(aes(x = k, y = cRab)) +
+  geom_line()
+
+res |>
+  ggplot(aes(x = k, y = var)) +
+  geom_line()
+res
+```
+
