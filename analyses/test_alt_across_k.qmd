@@ -31,7 +31,7 @@ crab_k_across <- function(data = data,
   
   result <- lapply(c(c_vec), function(k) {
     resample_matrices <- resample_function(data = data,
-                                           formula = ~ .,
+                                           formula = formula,
                                            k = k,
                                            number_of_resamples = number_of_resamples,
                                            proportion_resample = proportion_resample,

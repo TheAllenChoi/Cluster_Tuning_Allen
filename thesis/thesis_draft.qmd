@@ -33,6 +33,13 @@ library(kableExtra)
 library(foreach)
 library(doParallel)
 library(cluster)
+library(tidyclust)
+library(bench)
+
+registerDoParallel(cores = detectCores() - 1)
+set.seed(599)
+
+source(here::here("functions.R"))
 ```
 
 # The Problem and What's been Tried
@@ -126,21 +133,93 @@ There will probably be lots of citations here for many articles or even software
 
 ## Performance on penguins dataset
 
-|                        |           |
-|------------------------|-----------|
-| **Number of Clusters** | **Score** |
-| 2                      | 393.928   |
-| 3                      | 71.5394   |
-| 4                      | 7147.85   |
-| 5                      | 4228.18   |
-| 6                      | 4700.21   |
-| 7                      | 4562.12   |
-| 8                      | 4427.73   |
-| 9                      | 4246.44   |
-| 10                     | 3567.82   |
+```{r}
+test_data <- penguins |>
+  drop_na() |>
+  mutate(bill_len = as.numeric(scale(bill_len)),
+         flipper_len = as.numeric(scale(flipper_len)))
+
+test_data |> 
+  ggplot(aes(x = bill_len,
+             y = flipper_len)) +
+  geom_point() +
+  theme_minimal()
+
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 40,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(data = data,
+                                           formula = formula,
+                                           k = k,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed * k,
+                                           algorithm = algorithm)
+    score <- squared_distance_from_one(mean_matrix(resample_matrices))
+    print(k)
+    # print(image(mean_matrix(resample_matrices)))
+    return(list(k = k,
+                cRab = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+
+res <- lapply(1:20, function(i) {
+  starting_seed <- 599 + i
+  crab_k_across(data = test_data,
+                starting_seed = starting_seed,
+                formula = ~ bill_len + flipper_len,
+                c_vec = c(2:7),
+                algorithm = "kmeans")
+})
+
+
+plot <- bind_rows(res) |> 
+  ggplot(aes(y = cRab, x = factor(k))) +
+  geom_boxplot() +
+  theme_minimal()
+
+plotly::ggplotly(
+  plot
+)
+```
+
+```{r}
+res <- lapply(1:20, function(i) {
+  starting_seed <- 599 + i
+  crab_k_across(data = test_data,
+                starting_seed = starting_seed,
+                number_of_resamples = 80,
+                formula = ~ bill_len + flipper_len,
+                c_vec = c(2:7),
+                algorithm = "kmeans")
+})
+
+plot <- bind_rows(res) |> 
+  ggplot(aes(y = cRab, x = factor(k))) +
+  geom_boxplot() +
+  theme_minimal()
+
+plotly::ggplotly(
+  plot
+)
+```
+
 
 
 # Computational Details
+
 
 ## Matrix Stacking
 
@@ -176,9 +255,38 @@ Then, to make a final score taking all this into account, we decided to vectoriz
 
 
 ## Distribution of Ones and Neg Ones
-## Speeed and Memory Scaling
+## Speed and Memory Scaling
 
-It performs exponentially in terms of memory use and speed.
+```{r}
+test_vec <- c(25, 50, 100, 200, 300, 400, 500, 600, 800, 1000)
+efficiency_results <- lapply(test_vec, function(i) {
+  data <- data.frame(replicate(2, rnorm(i)))
+  temp <- bench::mark(
+    squared_distance_from_one(mean_matrix(resample_function(data))),
+    iterations = 15,
+    filter_gc = FALSE
+  ) |> 
+    select(median, mem_alloc)
+  return(list(num_obs = i,
+              median = temp$median,
+              memory = temp$mem_alloc))
+})
+
+bind_rows(efficiency_results) |> 
+  mutate(median = as.numeric(median)) |> 
+  ggplot(aes(x = num_obs, y = median)) +
+  geom_line() +
+  theme_minimal()
+
+
+
+bind_rows(efficiency_results) |> 
+  mutate(memory = as.numeric(memory)) |> 
+  ggplot(aes(x = num_obs, y = memory/1024^2)) + 
+  geom_line() + 
+  theme_minimal() 
+```
+Constant up until a certain point, after which it becomes quadratic in terms of both memory and time. 
 
 # Null Distribution
 
