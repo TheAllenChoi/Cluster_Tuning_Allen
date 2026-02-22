@@ -26,8 +26,8 @@ format:
 ---
 
 ```{r}
-#| lablel: set-up
-#| include: false # Use to hide code and results
+#| label: set-up
+#| include: false
 library(tidyverse)
 library(kableExtra)
 library(foreach)
@@ -35,6 +35,7 @@ library(doParallel)
 library(cluster)
 library(tidyclust)
 library(bench)
+library(cluster)
 
 registerDoParallel(cores = detectCores() - 1)
 set.seed(599)
@@ -46,16 +47,24 @@ source(here::here("functions.R"))
 
 ## Motivation
 
-Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand, differentiating it from supervised clustering. Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats. For example, the elbow method sometimes presents itself as having no elbow, and the definition of an "elbow" is sometimes ambiguous (we need a source for this later). There are also cases where the scores don't necessarily agree, causing confusion in what score to believe.
+Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand, differentiating it from supervised clustering. Kodinariya (2013) presents the most common approaches used, such as the elbow method [@thorndike_who_1953] and Silhouette score. However, even with these scores there are often disagreements and caveats.
 
+The elbow method is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Similar in behavior to the $R^2$ measure, adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, [@Schubert_2023] takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
+
+We demonstrate this below with an example dataset:
 ```{r}
 set.seed(551)
 data <- data.frame(rbind(
-  cbind(rnorm(50, -2), rnorm(50, -2)),
-  cbind(rnorm(50, 0), rnorm(50, 0)),
-  cbind(rnorm(50, 2), rnorm(50, 2)))) |> 
+  cbind(rexp(50, 1), rexp(50, 1)),
+  cbind(rexp(50, 3), rexp(50, 3)) + 1,
+  cbind(rexp(50, 5), rexp(50, 5)) + 2)) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
+
+data_color <- data |> 
+  mutate(group = cbind(rep(1, 50),
+                       rep(2, 50),
+                       rep(3, 50)))
 
 res <- lapply(c(1:10), function(i) {
   WCSS <- kmeans(data,
@@ -64,8 +73,8 @@ res <- lapply(c(1:10), function(i) {
   if (i == 1) {
     s <- data.frame(t(c(NA, NA, NA)))
   } else {
-    s <- silhouette(kmeans(data, centers = i, nstart = 10)$cluster,
-                  dist(data))
+    s <- cluster::silhouette(kmeans(data, centers = i, nstart = 10)$cluster,
+                             dist(data))
   }
   return(data.frame(k = as.vector(i),
                     WCSS = as.vector(WCSS),
@@ -87,39 +96,16 @@ bind_rows(res) |>
   scale_x_continuous(breaks = 1:10)
 
 
-ggplot(data = data, aes(x = X1, y = X2)) +
+ggplot(data = data, aes(x = X1, y = X2
+                        ,color = c(rep("red", 50), rep("blue", 100), rep("green", 50))
+                        )) +
   geom_point()
-```
-
-
-```{r}
-bind_rows(res) |> 
-  ggplot(aes(x = k, y = WCSS)) +
-  geom_point() +
-  geom_line() +
-  theme_minimal() +
-  scale_x_continuous(breaks = 1:10)
-
-bind_rows(res) |> 
-  ggplot(aes(x = k, y = Silhouette)) +
-  geom_point() +
-  geom_line() +
-  theme_minimal() +
-  scale_x_continuous(breaks = 1:10)
-
-
-ggplot(data = data, aes(x = X1, y = X2)) +
-  geom_point()
-
-mean(s[, 3])
-
-plot(s)
 ```
 
 
 We present the cRab algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
 
-There will probably be lots of citations here for many articles or even software like R [@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
+[@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
 
 
 ## Literature Review
@@ -444,9 +430,6 @@ resample_function <- function(data = data,
 # Mean Matrix
 
 ```{r}
-# Got more fancy functions, or figures, or tables, 
-# or pretty much anything?
-
 mean_matrix <- function(list_of_matrices = list_of_matrices) {
   # Absolute value the entire matrix, for all matrices
   absolute_sum <- lapply(list_of_matrices, abs)
