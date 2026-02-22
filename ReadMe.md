@@ -8,11 +8,11 @@ This repository is where the work for my Master's thesis, cRab: A Novel Clusteri
 
 ### /thesis
 
-This folder contains the files necessary to render the thesis paper itself, as well as the data needed to generate the visualizations and tables.
+This folder contains the files necessary to render the thesis paper itself.
 
 ### /analyses
 
-This folder contains the analyses generating the data used immediately in the thesis
+This folder contains the analyses generating the data used immediately in the thesis, as well as the data directly used in the thesis to generate the visualizations.
 
 ### /drafts
 

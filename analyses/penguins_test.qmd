@@ -1,0 +1,70 @@
+---
+title: "penguins_test"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(foreach)
+library(doParallel)
+library(cluster)
+registerDoParallel(cores = detectCores() - 1)
+source(here::here("functions.R"))
+set.seed(599)
+
+test_data <- penguins |>
+  drop_na() |>
+  mutate(bill_len = as.numeric(scale(bill_len)),
+         flipper_len = as.numeric(scale(flipper_len)))
+
+test_data |> 
+  ggplot(aes(x = bill_len,
+             y = flipper_len)) +
+  geom_point() +
+  theme_minimal()
+
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 40,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(data = data,
+                                           formula = formula,
+                                           k = k,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed * k,
+                                           algorithm = algorithm)
+    score <- squared_distance_from_one(mean_matrix(resample_matrices))
+    return(list(k = k,
+                cRab = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+
+res <- lapply(1:20, function(i) {
+  starting_seed <- 599 + i
+  crab_k_across(data = test_data,
+                starting_seed = starting_seed,
+                formula = ~ bill_len + flipper_len,
+                c_vec = c(2:10),
+                algorithm = "kmeans")
+})
+```
+## Save data
+```{r}
+result <- bind_rows(res)
+write.csv(result, 
+          file = here::here("analyses/penguins_data/penguins_cRab.csv"))
+```
+
