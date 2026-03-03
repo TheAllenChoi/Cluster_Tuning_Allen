@@ -137,3 +137,23 @@ ggplotly(plot)
 image(m_matrix)
 ```
 
+```{r}
+data <- data.frame(replicate(2000, rexp(100, rate = 2)))
+dist_matrix <- dist(data, method = "euclidean")
+
+dist_vec <- data.frame(a = as.vector(dist_matrix)) 
+
+gg <- dist_vec |> 
+  ggplot(aes(x = a)) +
+  geom_histogram(aes(y = after_stat(density))) +
+  theme_minimal()
+
+gg + stat_function(fun = function(x) dnorm(x, mean = 31.63,
+                                        sd = sqrt(0.6)),
+                   color = "blue")
+
+car::qqPlot(dist_vec$a)
+
+shapiro.test(dist_vec$a)
+```
+

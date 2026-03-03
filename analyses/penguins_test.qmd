@@ -15,8 +15,8 @@ set.seed(599)
 
 test_data <- penguins |>
   drop_na() |>
-  mutate(bill_len = as.numeric(scale(bill_len)),
-         flipper_len = as.numeric(scale(flipper_len)))
+  mutate(bill_len = as.numeric(scale(bill_length_mm)),
+         flipper_len = as.numeric(scale(flipper_length_mm)))
 
 test_data |> 
   ggplot(aes(x = bill_len,
