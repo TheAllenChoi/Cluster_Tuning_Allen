@@ -123,3 +123,40 @@ squared_distance_from_one <- function(mean_matrix = mean_matrix) {
 image_helper <- function(list_res = list_res) {
   lapply(list_res, function(x) image(x))
 }
+
+getPointVecHelper <- function(i, mean_matrix) {
+  # Given a point i and the mean matrix, should
+  # return vector of all values in the mean matrix corresponding to obs i
+  # after removing all NAs and then taking absolute value
+
+  row <- mean_matrix[i, ]
+  col <- mean_matrix[, i]
+
+  # We don't care about the order, just the values themselves
+  res_vec <- c(row, col)
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  return(res_vec)
+
+}
+
+point_contribution <- function(data, mean_matrix) {
+  # Given the original data (the dataset inputted into the resample_matrices function),
+  # and the mean_matrix, returns each observation's contribution to the cRab Score.
+  # We don't necessarily require the second arg to be the mean matrix, for example
+  # it could be resample matrix j.
+  # This is returned as an (index, score) dataframe.
+
+  # Get a list of lists containing index and index "cRab" score
+  scores <- lapply(c(1:nrow(data)), function(i) {
+    full_vec <- getPointVecHelper(i, mean_matrix)
+    singlePointScore <- mean((1 - full_vec)^2)
+    return(list(index = i, singlePointScore = singlePointScore))
+  })
+  final_df <- do.call(rbind.data.frame, scores)
+  total_score <- mean(final_df$singlePointScore)
+
+  final_df <- final_df |>
+    mutate(singlePointContribution = singlePointScore / total_score)
+
+  return(final_df)
+}
