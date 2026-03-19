@@ -61,7 +61,7 @@ crab_k_across <- function(data = data,
 
 # https://cs.uef.fi/sipu/datasets/
 test_data <- read.table(here::here("thesis/data/a1.txt")) |> 
-  # slice_sample(prop = 0.33) |> 
+  slice_sample(prop = 0.5) |>
   mutate(V1 = as.numeric(scale(V1)),
          V2 = as.numeric(scale(V2)))
 
@@ -71,11 +71,11 @@ test_data |>
 
 
 res <- crab_k_across(test_data,
-                     c_vec = c(15:25))
+                     c_vec = c(10:30))
 
 res |> 
-  ggplot(aes(x = k, y = cRab)) +
-  geom_line()
+  ggplot(aes(x = as.character(k), y = cRab)) +
+  geom_point()
 
 res
 
@@ -85,6 +85,17 @@ res
 
 # image(mean)
 ```
+
+## Res test through null hypothesis test
+```{r}
+null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+res |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = as.character(k), y = adj_crab)) +
+  geom_point()
+```
+
 
 ## Try removing the Areas of High Contention?
 

@@ -1,6 +1,8 @@
 ---
 title: "null_distribution"
-format: html
+format:
+  html:
+    embed-resources: true
 ---
 ```{r}
 library(tidyclust)
@@ -20,45 +22,198 @@ source(here::here("functions.R"))
 
 
 ```{r}
-tic()
-p <- 2 # Setting it to two-dimensional normal
-n <- c(100)
-n_resamples <- c(20, 50)
-prop_resample <- c(0.8)
-runs <- c(100)
-k <- 2:5
-starting_seed <- 599
-
-grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
-  rowwise() |>
-  mutate(res = list(lapply(c(1:runs), function(i) {
-    temp_seed <- starting_seed * n_resamples * i
-    set.seed(temp_seed) # very important to set this
-    data <- data.frame(replicate(p, rnorm(n)))
-    resample_matrices <- resample_function(data = data,
-                                           formula = ~ .,
-                                           k = k,
-                                           number_of_resamples = n_resamples,
-                                           proportion_resample = prop_resample,
-                                           starting_seed = temp_seed)
-    m_matrix <- mean_matrix(resample_matrices)
-    return(squared_distance_from_one(m_matrix))
-
-  })))
-
-end_result <- grid_result |>
-  unnest(res) |>
-  unnest(res)
-toc()
+# tic()
+# p <- 2 # Setting it to two-dimensional normal
+# n <- c(100, 500)
+# n_resamples <- c(40)
+# prop_resample <- c(0.8)
+# runs <- c(25)
+# k <- 2:30
+# starting_seed <- 599
+# 
+# grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+#   rowwise() |>
+#   mutate(res = list(lapply(c(1:runs), function(i) {
+#     temp_seed <- starting_seed * n_resamples * i
+#     set.seed(temp_seed) # very important to set this
+#     data <- data.frame(replicate(p, rnorm(n)))
+#     resample_matrices <- resample_function(data = data,
+#                                            formula = ~ .,
+#                                            k = k,
+#                                            number_of_resamples = n_resamples,
+#                                            proportion_resample = prop_resample,
+#                                            starting_seed = temp_seed)
+#     m_matrix <- mean_matrix(resample_matrices)
+#     return(squared_distance_from_one(m_matrix))
+# 
+#   })))
+# 
+# end_result <- grid_result |>
+#   unnest(res) |>
+#   unnest(res)
+# toc()
+# 
+# write_csv(end_result,
+#           file = here::here("analyses/null_distribution_data/null_test_1.csv"))
+```
+66.26 sec
+```{r}
+# tic()
+# p <- 2 # Setting it to two-dimensional normal
+# n <- c(100)
+# n_resamples <- c(20, 50)
+# prop_resample <- c(0.8)
+# runs <- c(50)
+# k <- 2:5
+# starting_seed <- 599
+# 
+# grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+#   rowwise() |>
+#   mutate(res = list(lapply(c(1:runs), function(i) {
+#     temp_seed <- starting_seed * n_resamples * i
+#     set.seed(temp_seed) # very important to set this
+#     data <- data.frame(replicate(p, rnorm(n)))
+#     resample_matrices <- resample_function(data = data,
+#                                            formula = ~ .,
+#                                            k = k,
+#                                            number_of_resamples = n_resamples,
+#                                            proportion_resample = prop_resample,
+#                                            starting_seed = temp_seed)
+#     m_matrix <- mean_matrix(resample_matrices)
+#     return(squared_distance_from_one(m_matrix))
+# 
+#   })))
+# 
+# end_result <- grid_result |>
+#   unnest(res) |>
+#   unnest(res)
+# toc()
 ```
 
+
+
 ```{r}
+end_result <- read_csv(
+  here::here("analyses/null_distribution_data/null_test_1.csv")
+)
+
 end_result |> 
-  mutate(res = log(res)) |> 
   ggplot(aes(x = factor(k), y = res)) +
   geom_boxplot() +
-  theme_minimal() +
-  ggtitle("2-D Normal Distribution Scores, n = 200, n_resamples = 200, prop_resample = 0.1, 200 runs") +
-  facet_wrap(~n_resamples)
+  theme_bw() +
+  ggtitle("2-D Normal Distribution Scores, n = 100, 500, prop_resample = 0.8, 40 resamples,
+25 runs") +
+  facet_wrap(~n)
+```
+
+
+```{r}
+# cluster_2_mean <- end_result |> 
+#   filter(n == 100) |> 
+#   group_by(k) |> 
+#   summarize(mean = mean(res)) |> 
+#   filter(k == 2) |> 
+#   pull(mean)
+# 
+# simulation_based_ratio <- end_result |> 
+#   filter(n == 100) |> 
+#   group_by(k) |> 
+#   summarize(mean = mean(res)) |> 
+#   mutate(cluster_2_mean / mean)
+# 
+# 
+# write_csv(simulation_based_ratio,
+#           file = here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+```
+
+## Null dist test
+
+```{r}
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 100,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(data = data,
+                                           formula = formula,
+                                           k = k,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed,
+                                           algorithm = algorithm)
+    m_matrix <- mean_matrix(resample_matrices)
+    score <- squared_distance_from_one(m_matrix)
+    print(k)
+    # print(image(m_matrix))
+    e <- point_contribution(data, m_matrix)
+    
+    print(data |> 
+      ggplot(aes(x = V1, y = V2,
+             color = log(e$singlePointContribution))) +
+        geom_jitter() +
+        scale_color_distiller(type = "div",
+                        palette = "Spectral") +
+        theme_minimal()
+      )
+    return(list(k = k,
+                cRab = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/a1.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res <- crab_k_across(test_data,
+                     c_vec = c(2:30))
+
+res |> 
+  ggplot(aes(x = factor(k, ordered = T), y = cRab)) +
+  geom_point()
+
+res
+```
+
+## Res test through null hypothesis test
+```{r}
+null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+res |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point()
+```
+
+
+```{r}
+penguin_data <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
+
+penguin_data |> 
+  group_by(k) |> 
+  summarize(cRab = mean(cRab)) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_bw() +
+  ggtitle("Penguins Adjusted CRAB score")
+  
 ```
 
