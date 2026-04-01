@@ -150,7 +150,7 @@ Of course, it seems disingenuous to not include an example of where these method
 ```
 
 
-We present the cRab algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
+We present the CRAB algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
 
 [@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
 
@@ -179,9 +179,10 @@ penguins_processed |>
   geom_boxplot() +
   theme_minimal() +
   labs(x = "k-Clusters",
-       y = "cRab Scores")
+       y = "CRAB Scores") +
+  ggtitle("Distribution of CRAB Scores over k-Clusters")
 ```
-The cRab algorithm was ran 10 times on each of the k-Clusters, randomizing the starting seed 
+The CRAB algorithm was ran 10 times on each of the k-Clusters, randomizing the starting seed 
 
 # Computational Details
 
@@ -218,32 +219,103 @@ After we have n matrices, we then reduce the matrices, taking the mean with resp
 
 To illustrate the construction of the final score given this mean matrix, we use the penguins dataset in R with three known species and scaled bill length and flipper lengths.
 
-![](images/clipboard-3588684992.png)
+```{r}
+#| label: penguins-bill-flipper-plot
+#| echo: false
+#| warning: false
+#| fig-cap: "Plot of Penguin Species by Bill and Flipper Length"
 
-The distribution of values inside the mean matrix after running the algorithm on the penguins dataset, using K-Means and k=2
+temp_data <- penguins |> 
+  mutate(X1 = as.numeric(scale(bill_len)),
+         X2 = as.numeric(scale(flipper_len))) |> 
+  drop_na() |> 
+  select(X1, X2, species)
 
-(replace with code that generates this later)
+temp_data |> 
+  ggplot(aes(x = X1, y = X2, color = species)) +
+  geom_point() +
+  theme_bw() +
+  xlab("Scaled Bill Length") +
+  ylab("Scaled Flipper Length") +
+  ggtitle("Scaled Bill Length vs. Flipper Length by Species")
+```
+For the purposes of designing the scoring algorithm, we used this dataset with the three "known" clusters in order to fine-tune the behavior of the scores. Ideally, a scoring algorithm would output a lower score when the number of clusters input into the algorithm is not equal to three. Before defining this algorithm, it was helpful to first see the raw mean vector of values after the mean_matrix function, which simply averages the $p_{ij}$ values over all the resample matrices. Note that the values of ones and negative ones were removed, since a vast majority of points either consistently are in the same cluster or are consistently not in the same cluster.
 
-![](images/clipboard-1299844805.png)
+```{r}
+#| label: penguins-mean-matrix-vals-1
+#| echo: false
+#| warning: false
+#| fig-cap: "The distribution of values inside the mean matrix after running the algorithm on the penguins dataset, using K-Means and k = 2"
 
-(replace with code that generates this later)
+temp_resample <- resample_function(temp_data, 
+                                   k = 2,
+                                   formula = ~ X1 + X2,
+                                   proportion_resample = 0.8,
+                                   number_of_resamples = 30)
 
-(Also remove the images folder later)
-
-Figure 2: The distribution of values inside the mean matrix after running the algorithm on the penguins dataset, using K-Means and k=3
-
-We see that from Figures 1 and 2 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals", (not being in the same cluster).
-
-Then, to make a final score taking all this into account, we decided to vectorize this matrix, then taking the absolute value and getting the sum of squared distances from 1. This is in order to heavily penalize values that are farther from 1.
+temp_vec <- as.vector(mean_matrix(temp_resample))
+temp_vec <- temp_vec[!is.na(temp_vec)]
 
 
-## Distribution of Ones and Neg Ones
+data.frame(X = temp_vec) |> 
+  filter(X > -1 & X < 1) |> 
+  ggplot(aes(x = X)) +
+  geom_histogram() +
+  scale_x_continuous(breaks = seq(-1, 1, 0.2),
+                     limits = c(-1, 1)) +
+  scale_y_continuous(breaks = seq(0, 100, 20),
+                     limits = c(0, 100)) +
+  theme_bw() +
+  ggtitle("Distribution of Values of Mean Matrix for k = 2")
+```
+
+
+```{r}
+#| label: penguins-mean-matrix-vals-2
+#| echo: false
+#| warning: false
+#| fig-cap: "The distribution of values inside the mean matrix after running the algorithm on the penguins dataset, using K-Means and k = 3"
+
+
+temp_resample <- resample_function(temp_data, 
+                                   k = 3,
+                                   formula = ~ X1 + X2,
+                                   proportion_resample = 0.8,
+                                   number_of_resamples = 30)
+
+temp_vec <- as.vector(mean_matrix(temp_resample))
+temp_vec <- temp_vec[!is.na(temp_vec)]
+
+
+data.frame(X = temp_vec) |> 
+  filter(X > -1 & X < 1) |> 
+  ggplot(aes(x = X)) +
+  geom_histogram() +
+  scale_x_continuous(breaks = seq(-1, 1, 0.2),
+                     limits = c(-1, 1)) +
+  scale_y_continuous(breaks = seq(0, 100, 20),
+                     limits = c(0, 100)) +
+  theme_bw() +
+  ggtitle("Distribution of Values of Mean Matrix for k = 3")
+```
+
+We see that from the above figures that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
+
+This informed our next direction of how to construct the scoring algorithm combining all of this information: Our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.  
+
+To make a final score taking all this into account, we decided to take the absolute value of the vectorized mean matrix, which as a side effect would give consistent buddies and consistent rivals the same weight in our score. With this, we would obtain the sum of squared distances from 1, allowing us to penalize those pairs of observations that are inconsistent.
+
+Our final scoring algorithm ends up as:
+
+$\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$,
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all resample matrices.
+
 ## Speed and Memory Scaling
 
 ```{r}
 #| label: speed-memory-scaling
 #| echo: false
-#| fig-cap: "Memory and Speed of the cRab Algorithm as Number of Observations Increases"
+#| fig-cap: "Memory and Speed of the CRAB Algorithm as Number of Observations Increases"
 
 test_vec <- c(25, 50, 100, 200, 300,
               400, 500, 600, 800, 1000)
@@ -280,7 +352,9 @@ Constant up until a certain point, after which it becomes quadratic in terms of 
 
 ## Null Distribution of Scores
 
-It is also interesting information to see what the distribution of scores looks like when there are no clusters in the dataset. This is so that our scores can be adjusted depending on this "null distribution", also allowing us to get a degree of evidence for a given k and other parameters.
+It is also interesting information to see what the distribution of scores looks like when there are no clusters in the dataset.
+
+The hope was that our scores can be adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust 
 
 ```{r}
 #| label: null-distribution-1
@@ -319,6 +393,9 @@ end_result |>
   head(5) |> 
   kable()
 ```
+
+## Adj-CRAB Score
+
 
 # Conclusion
 
@@ -458,9 +535,14 @@ mean_matrix <- function(list_of_matrices = list_of_matrices) {
 
 ```{r}
 squared_distance_from_one <- function(mean_matrix = mean_matrix) {
-  res_vec <- as.vector(mean_matrix) # Ignore the order of the elements in matrix
-  res_vec <- abs(res_vec[!is.na(res_vec)]) # Absolute value and remove NAs
-  return(mean((1 - res_vec)^2)) # Take average squared distance from one
+  # Ignore the order of the elements in matrix
+  res_vec <- as.vector(mean_matrix)
+  
+  # Absolute value and remove NAs
+  res_vec <- abs(res_vec[!is.na(res_vec)])
+  
+  # Take average squared distance from one
+  return(mean((1 - res_vec)^2))
 }
 ```
 
@@ -469,12 +551,12 @@ squared_distance_from_one <- function(mean_matrix = mean_matrix) {
 ```{r}
 point_contribution <- function(data, mean_matrix) {
   # Given the original data (the dataset inputted into the resample_matrices function),
-  # and the mean_matrix, returns each observation's contribution to the cRab Score.
+  # and the mean_matrix, returns each observation's contribution to the CRAB Score.
   # We don't necessarily require the second arg to be the mean matrix, for example
   # it could be resample matrix j.
   # This is returned as an (index, score) dataframe.
   
-  # Get a list of lists containing index and index "cRab" score
+  # Get a list of lists containing index and index "CRAB" score
   scores <- lapply(c(1:nrow(data)), function(i) {
     full_vec <- getPointVecHelper(i, mean_matrix)
     singlePointScore <- mean((1 - full_vec)^2)

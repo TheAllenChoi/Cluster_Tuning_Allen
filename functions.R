@@ -2,7 +2,7 @@ resample_function <- function(data = data,
                               formula = ~ .,
                               k = 3,
                               number_of_resamples = 15,
-                              proportion_resample = 0.9,
+                              proportion_resample = 0.8,
                               starting_seed = 599,
                               algorithm = "kmeans") {
   # tictoc::tic()
