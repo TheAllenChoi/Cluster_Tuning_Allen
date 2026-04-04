@@ -65,8 +65,8 @@ x_{3}, y_{3} &\sim exp(\lambda = 5) + 2
 set.seed(551)
 data <- data.frame(rbind(
   cbind(rexp(50, 1), rexp(50, 1)),
-  cbind(rexp(50, 3), rexp(50, 3)) + 1,
-  cbind(rexp(50, 5), rexp(50, 5)) + 2)) |> 
+  cbind(rexp(50, 1.5), rexp(50, 1.5)) + 1,
+  cbind(rexp(50, 2), rexp(50, 2)) + 2)) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 
@@ -142,14 +142,6 @@ bind_rows(res) |>
   ggtitle("Silhouette Score vs. k")
 ```
 
-
-Of course, it seems disingenuous to not include an example of where these methods work perfectly well:
-
-```{r}
-
-```
-
-
 We present the CRAB algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
 
 [@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
@@ -160,9 +152,13 @@ We present the CRAB algorithm, which utilizes random subsampling of a dataset in
 # Details
 
 ## Calculated
+
+
 ## Performance on Simulated Data
+
+
 ## Sensitivity
-## Known Data
+
 
 ## Performance on penguins dataset
 
@@ -173,14 +169,17 @@ We present the CRAB algorithm, which utilizes random subsampling of a dataset in
 #| fig-cap: "Boxplots of Simulated Scores Across k On Penguins Dataset"
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
+null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 
 penguins_processed |> 
-  ggplot(aes(y = cRab, x = factor(k))) +
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
   geom_boxplot() +
   theme_minimal() +
   labs(x = "k-Clusters",
-       y = "CRAB Scores") +
-  ggtitle("Distribution of CRAB Scores over k-Clusters")
+       y = "Adj-CRAB Scores") +
+  ggtitle("Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster)")
 ```
 The CRAB algorithm was ran 10 times on each of the k-Clusters, randomizing the starting seed 
 
@@ -310,6 +309,10 @@ Our final scoring algorithm ends up as:
 $\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$,
 where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all resample matrices.
 
+## Point Contribution
+
+
+
 ## Speed and Memory Scaling
 
 ```{r}
@@ -395,6 +398,7 @@ end_result |>
 ```
 
 ## Adj-CRAB Score
+
 
 
 # Conclusion
@@ -591,6 +595,43 @@ getPointVecHelper <- function(i, mean_matrix) {
   
 }
 ```
+
+# CRAB Score Across k Clusters
+```{r}
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 80,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(
+      data = data,
+      formula = formula,
+      k = k,
+      number_of_resamples = number_of_resamples,
+      proportion_resample = proportion_resample,
+      starting_seed = starting_seed,
+      algorithm = algorithm
+      )
+
+    m_matrix <- mean_matrix(resample_matrices)
+    score <- squared_distance_from_one(m_matrix)
+
+    return(list(k = k,
+                cRab = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+```
+
 
 ```{r}
 # resample_matrices <- resample_function(penguins,
