@@ -55,18 +55,18 @@ The elbow method [@thorndike_who_1953] is a relatively simple technique that uti
 We demonstrate this below with an example dataset, where
 
 $$\begin{aligned}
-x_{1}, y_{1} &\sim exp(\lambda = 1) \\ 
-x_{2}, y_{2} &\sim exp(\lambda = 3) + 1 \\ 
-x_{3}, y_{3} &\sim exp(\lambda = 5) + 2 
+x_{1}, y_{1} &\sim gamma(\alpha = 1) \\ 
+x_{2}, y_{2} &\sim gamma(\alpha = 1.5) + 2 \\ 
+x_{3}, y_{3} &\sim gamma(\alpha = 2) + 4 
 \end{aligned}$$
 
 ```{r}
 #| include: false
 set.seed(551)
 data <- data.frame(rbind(
-  cbind(rexp(50, 1), rexp(50, 1)),
-  cbind(rexp(50, 3), rexp(50, 3)) + 1,
-  cbind(rexp(50, 5), rexp(50, 5)) + 2)) |> 
+  cbind(rgamma(50, 1), rgamma(50, 1)),
+  cbind(rgamma(50, 1.5), rgamma(50, 1.5)) + 2,
+  cbind(rgamma(50, 2), rgamma(50, 2)) + 4)) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 
@@ -78,12 +78,11 @@ data_color <- data |>
 
 res <- lapply(c(1:10), function(i) {
   WCSS <- kmeans(data,
-                 centers = i,
-                 nstart = 10)$tot.withinss
+                 centers = i)$tot.withinss
   if (i == 1) {
     s <- data.frame(t(c(NA, NA, NA)))
   } else {
-    s <- cluster::silhouette(kmeans(data, centers = i, nstart = 10)$cluster,
+    s <- cluster::silhouette(kmeans(data, centers = i)$cluster,
                              dist(data))
   }
   return(data.frame(k = as.vector(i),
@@ -143,13 +142,6 @@ bind_rows(res) |>
 ```
 
 
-Of course, it seems disingenuous to not include an example of where these methods work perfectly well:
-
-```{r}
-
-```
-
-
 We present the CRAB algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
 
 [@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
@@ -160,29 +152,134 @@ We present the CRAB algorithm, which utilizes random subsampling of a dataset in
 # Details
 
 ## Calculated
+
 ## Performance on Simulated Data
+
+
 ## Sensitivity
+
+
 ## Known Data
+
 
 ## Performance on penguins dataset
 
 ```{r}
-#| label: penguins-simulated-boxplot-scores
-#| echo: false
-#| warning: false
-#| fig-cap: "Boxplots of Simulated Scores Across k On Penguins Dataset"
+set.seed(551)
+data <- penguins |> 
+  drop_na() |> 
+  mutate(V1 = as.numeric(scale(bill_len)),
+         V2 = as.numeric(scale(bill_dep))) |> 
+  select(V1, V2)
 
-penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
+res <- lapply(c(1:10), function(i) {
+  WCSS <- kmeans(data,
+                 centers = i)$tot.withinss
+  if (i == 1) {
+    s <- data.frame(t(c(NA, NA, NA)))
+  } else {
+    s <- cluster::silhouette(kmeans(data, 
+                                    centers = i)$cluster,
+                             dist(data))
+  }
+  return(data.frame(k = as.vector(i),
+                    WCSS = as.vector(WCSS),
+                    Silhouette = mean(s[, 3])))
+})
 
-penguins_processed |> 
-  ggplot(aes(y = cRab, x = factor(k))) +
-  geom_boxplot() +
+ggplot(data = data, 
+       aes(x = V1, y = V2)) +
+  geom_point() +
   theme_minimal() +
-  labs(x = "k-Clusters",
-       y = "CRAB Scores") +
-  ggtitle("Distribution of CRAB Scores over k-Clusters")
+  ggtitle("Scaled Penguins Bill Length vs. Bill Depth")
+
+
+bind_rows(res) |> 
+  ggplot(aes(x = k, y = WCSS)) +
+  geom_vline(xintercept = 3,
+             color = "lightblue",
+             linewidth = 1) +
+  geom_point() +
+  geom_line() +
+  theme_minimal() +
+  scale_x_continuous(breaks = 1:10) +
+  ggtitle("Elbow Method on Example Dataset")
+
+bind_rows(res) |> 
+  ggplot(aes(x = k, y = Silhouette)) +
+  geom_vline(xintercept = 3,
+             color = "lightblue",
+             linewidth = 1) +
+  geom_point() +
+  geom_line() +
+  theme_minimal() +
+  scale_x_continuous(breaks = 1:10) +
+  theme_minimal() +
+  ggtitle("Silhouette Score vs. k")
+
+
+
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 80,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans",
+                          print_pc = FALSE) {
+  # Calls the resampling function across the dataset, with the parameters
+  # passed to the resampling function.
+  
+  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(data = data,
+                                           formula = formula,
+                                           k = k,
+                                           number_of_resamples = number_of_resamples,
+                                           proportion_resample = proportion_resample,
+                                           starting_seed = starting_seed,
+                                           algorithm = algorithm)
+    m_matrix <- mean_matrix(resample_matrices)
+    score <- squared_distance_from_one(m_matrix)
+    
+    if (print_pc) {
+      print(k)
+      print(image(m_matrix))
+      e <- point_contribution(data, m_matrix)
+      print(data |> 
+        ggplot(aes(x = V1, y = V2,
+               color = log(e$singlePointContribution))) +
+          geom_jitter() +
+          scale_color_distiller(type = "div",
+                          palette = "Spectral") +
+          theme_minimal()
+      )
+    }
+    
+    return(list(k = k,
+                CRAB = score))
+  })
+  return(dplyr::bind_rows(result))
+}
+
+temp_res <- crab_k_across(data = data,
+                          c_vec = 2:10) 
+
+temp_res |> 
+  ggplot(aes(x = k, y = CRAB)) +
+    geom_vline(xintercept = 3,
+               color = "lightblue",
+               linewidth = 1) +
+    geom_point() +
+    geom_line() +
+    theme_minimal() +
+    scale_x_continuous(breaks = 1:10,
+                       limits = c(1, 10)) +
+    theme_minimal() +
+    ggtitle("CRAB vs. k")
 ```
-The CRAB algorithm was ran 10 times on each of the k-Clusters, randomizing the starting seed 
 
 # Computational Details
 
