@@ -27,7 +27,7 @@ test_data |>
 crab_k_across <- function(data = data,
                           c_vec = c_vec,
                           formula = ~ .,
-                          number_of_resamples = 40,
+                          number_of_resamples = 60,
                           proportion_resample = 0.8,
                           starting_seed = 599,
                           algorithm = "kmeans") {
@@ -57,7 +57,7 @@ res <- lapply(1:20, function(i) {
   crab_k_across(data = test_data,
                 starting_seed = starting_seed,
                 formula = ~ bill_len + flipper_len,
-                c_vec = c(2:10),
+                c_vec = c(2:15),
                 algorithm = "kmeans")
 })
 ```
