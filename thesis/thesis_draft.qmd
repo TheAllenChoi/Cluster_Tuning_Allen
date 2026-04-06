@@ -64,15 +64,9 @@ x_{3}, y_{3} &\sim gamma(\alpha = 2) + 4
 #| include: false
 set.seed(551)
 data <- data.frame(rbind(
-<<<<<<< HEAD
   cbind(rgamma(50, 1), rgamma(50, 1)),
   cbind(rgamma(50, 1.5), rgamma(50, 1.5)) + 2,
   cbind(rgamma(50, 2), rgamma(50, 2)) + 4)) |> 
-=======
-  cbind(rexp(50, 1), rexp(50, 1)),
-  cbind(rexp(50, 1.5), rexp(50, 1.5)) + 1,
-  cbind(rexp(50, 2), rexp(50, 2)) + 2)) |> 
->>>>>>> 59766c11db08d72d72ab56e8745cc76ef34201cd
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 
