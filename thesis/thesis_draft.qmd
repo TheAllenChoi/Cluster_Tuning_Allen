@@ -47,7 +47,7 @@ source(here::here("functions.R"))
 
 ## Motivation
 
-Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand, differentiating it from supervised clustering. Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats.
+Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand, differentiating it from supervised clustering. Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats that we will further explore.
 
 ### Elbow Method
 The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Similar in behavior to the $R^2$ measure, adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, [@Schubert_2023] takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
@@ -144,10 +144,26 @@ bind_rows(res) |>
 
 We present the CRAB algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
 
-[@r_core_team_2025]. [@ben-hur_stability_2001]. [@jaeger_cluster_2023]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
+[@r_core_team_2025]. [@ben-hur_stability_2001]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
+
+## Overview of Unsupervised Clustering Methods
+
+For the scope of this paper we will go over only a few of the basic unsupervised clustering methods commonly used due to the fact that the CRAB algorithm currently only supports either k-Means or hierarchical clustering. However, in theory the CRAB algorithm framework allows it to work on any unsupervised method as long as the algorithm outputs a cluster assignment for every observation in the dataset. Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
+
+### k-Means Clustering 
+
+
+[@jaeger_cluster_2023]
+
+
+### Hierarchical Clustering
+
 
 
 ## Literature Review
+
+(previous work done on the resampling method)
+[@ben-hur_stability_2001]
 
 # Details
 
@@ -160,6 +176,10 @@ We present the CRAB algorithm, which utilizes random subsampling of a dataset in
 ## Performance on penguins dataset
 
 ```{r}
+#| label: penguins-example-temp
+#| echo: false
+#| warning: false
+
 set.seed(551)
 data <- penguins |> 
   drop_na() |> 
@@ -297,11 +317,9 @@ The main principle of our algorithm works off of is the fact that subsamples of 
 
 We now need a framework for the handling of resampling the matrices. 
 
-We define a "resample matrix" or "cluster assignment matrix" for each resample, where for a resample
+We define a "resample matrix" or "cluster assignment matrix" for each resample, where for an $n \times n$ resample matrix $m$, for every pairwise interaction between observation $i$ and observation $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
 
-points $i$ and $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
-
-So, for two points i, j in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as:
+Denoted another way, for two points $i$, $j$ in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as:
 $$
 \begin{aligned}
 p_{ij} =
@@ -318,7 +336,7 @@ $$
 
 ## Algorithm Construction
 
-After we have n matrices, we then reduce the matrices, taking the mean with respect to each index pair, ignoring zeroes. We then receive a final "mean matrix" of size m x m, where m is the number of observations in the dataset.
+After we have m matrices, we then reduce the matrices, taking the mean with respect to each index pair, ignoring zeroes. We then receive a final "mean matrix" of size n x n, where n is the number of observations in the dataset.
 
 ## Score Construction
 
@@ -413,7 +431,7 @@ To make a final score taking all this into account, we decided to take the absol
 Our final scoring algorithm ends up as:
 
 $\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$,
-where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all resample matrices.
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
 
 ## Point Contribution
 
