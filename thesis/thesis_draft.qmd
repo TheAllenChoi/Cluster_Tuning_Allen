@@ -37,7 +37,7 @@ library(tidyclust)
 library(bench)
 library(cluster)
 
-registerDoParallel(cores = detectCores() - 1)
+registerDoParallel(cores = detectCores())
 set.seed(599)
 
 source(here::here("functions.R"))
@@ -440,39 +440,43 @@ where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample m
 ## Speed and Memory Scaling
 
 ```{r}
-#| label: speed-memory-scaling
+#| label: speed-memory-scaling-n
 #| echo: false
 #| fig-cap: "Memory and Speed of the CRAB Algorithm as Number of Observations Increases"
 
-test_vec <- c(25, 50, 100, 200, 300,
-              400, 500, 600, 800, 1000)
-efficiency_results <- lapply(test_vec, function(i) {
-  data <- data.frame(replicate(2, rnorm(i)))
-  temp <- bench::mark(
-    squared_distance_from_one(mean_matrix(resample_function(data))),
-    iterations = 15,
-    filter_gc = FALSE
-  ) |> 
-    select(median, mem_alloc)
-  return(list(num_obs = i,
-              median = temp$median,
-              memory = temp$mem_alloc))
-})
+efficiency_results <- read.csv(file = here::here("analyses/speed_memory_scaling_data/n_speed_memory_test.csv"))
 
-bind_rows(efficiency_results) |> 
-  mutate(median = as.numeric(median)) |> 
+efficiency_results |> 
   ggplot(aes(x = num_obs, y = median)) +
   geom_line() +
   theme_minimal()
 
-
-
-bind_rows(efficiency_results) |> 
-  mutate(memory = as.numeric(memory)) |> 
+efficiency_results |> 
   ggplot(aes(x = num_obs, y = memory/1024^2)) + 
   geom_line() + 
   theme_minimal() 
 ```
+
+```{r}
+#| label: speed-memory-scaling-d
+#| echo: false
+#| fig-cap: "Memory and Speed of the CRAB Algorithm as Number of Dimensions Increases"
+
+efficiency_results <- read.csv(file = here::here("analyses/speed_memory_scaling_data/d_speed_memory_test.csv"))
+
+efficiency_results |> 
+  ggplot(aes(x = num_obs, y = median)) +
+  geom_line() +
+  theme_minimal() +
+  xlab("# of Dimensions")
+
+efficiency_results |> 
+  ggplot(aes(x = num_obs, y = memory/1024^2)) + 
+  geom_line() + 
+  theme_minimal() +
+  xlab("# of Dimensions")
+```
+
 Constant up until a certain point, after which it becomes quadratic in terms of both memory and time. 
 
 # Null Distribution
@@ -481,7 +485,7 @@ Constant up until a certain point, after which it becomes quadratic in terms of 
 
 It is also interesting information to see what the distribution of scores looks like when there are no clusters in the dataset.
 
-The hope was that our scores can be adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust 
+The hope was that our scores can be adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust the CRAB score.
 
 ```{r}
 #| label: null-distribution-1

@@ -1,0 +1,102 @@
+---
+title: "speed_memory_scaling"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(foreach)
+library(doParallel)
+library(cluster)
+library(tidyclust)
+library(bench)
+library(cluster)
+
+registerDoParallel(cores = detectCores())
+set.seed(599)
+
+source(here::here("functions.R"))
+```
+# (Ran using 5900XT CPU and 32GB of DDR4 3200MHz RAM)
+
+## Changing number of obs n
+```{r}
+test_vec <- c(25, 50, 100, 200,
+              400, 600, 800, 1000)
+
+efficiency_results <- lapply(test_vec, function(i) {
+  gc()
+  data <- data.frame(replicate(2, rnorm(i)))
+  temp <- bench::mark(
+    squared_distance_from_one(mean_matrix(resample_function(data,
+                                                            number_of_resamples = 50))),
+    iterations = 30,
+    filter_gc = FALSE,
+    check = TRUE
+  ) |> 
+    select(median, mem_alloc)
+  return(list(num_obs = i,
+              median = temp$median,
+              memory = temp$mem_alloc))
+})
+
+write.csv(bind_rows(efficiency_results) |> 
+            mutate(median = as.numeric(median),
+                   memory = as.numeric(memory)),
+          file = here::here("analyses/speed_memory_scaling_data/n_speed_memory_test.csv"))
+
+
+bind_rows(efficiency_results) |> 
+  mutate(median = as.numeric(median)) |> 
+  ggplot(aes(x = num_obs, y = median)) +
+  geom_line() +
+  theme_minimal()
+
+
+bind_rows(efficiency_results) |> 
+  mutate(memory = as.numeric(memory)) |> 
+  ggplot(aes(x = num_obs, y = memory/1024^2)) + 
+  geom_line() + 
+  theme_minimal() 
+```
+
+## Changing number of dimensions d
+```{r}
+test_vec <- c(16, 32, 256, 512, 1024, 2048, 4096)
+
+efficiency_results <- lapply(test_vec, function(i) {
+  gc()
+  data <- data.frame(replicate(i, rnorm(100)))
+  temp <- bench::mark(
+    squared_distance_from_one(mean_matrix(resample_function(data,
+                                                            number_of_resamples = 50))),
+    iterations = 20,
+    filter_gc = FALSE,
+    check = TRUE
+  ) |> 
+    select(median, mem_alloc)
+  return(list(num_obs = i,
+              median = temp$median,
+              memory = temp$mem_alloc))
+})
+
+write.csv(bind_rows(efficiency_results) |> 
+            mutate(median = as.numeric(median),
+                   memory = as.numeric(memory)),
+          file = here::here("analyses/speed_memory_scaling_data/d_speed_memory_test.csv"))
+
+
+bind_rows(efficiency_results) |> 
+  mutate(median = as.numeric(median)) |> 
+  ggplot(aes(x = num_obs, y = median)) +
+  geom_line() +
+  theme_minimal()
+
+
+bind_rows(efficiency_results) |> 
+  mutate(memory = as.numeric(memory)) |> 
+  ggplot(aes(x = num_obs, y = memory/1024^2)) + 
+  geom_line() + 
+  theme_minimal() 
+```
