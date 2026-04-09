@@ -152,12 +152,11 @@ For the scope of this paper we will go over only a few of the basic unsupervised
 
 ### k-Means Clustering 
 
-
-[@jaeger_cluster_2023]
+[@ikotun_k-means_2023]
 
 
 ### Hierarchical Clustering
-
+[@jaeger_cluster_2023]
 
 
 ## Literature Review
@@ -437,47 +436,86 @@ where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample m
 
 
 
+
 ## Speed and Memory Scaling
 
+### Scaling with the Number of Observations
+
+As mentioned previously in the paper, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \centerdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
+
+With the k-Means algorithm, it has a time complexity that scales by the order of $n \centerdot p \centerdot q \centerdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. For our purposes we will only focus on the number of observations and number of dimensions due to the fact that the maximum number of iterations is capped at 10 and the number of clusters tested with the CRAB algorithm is small (less than 40). The k-Means algorithm is ran for each resample matrix as well.
+
+Taking these time complexities into account, we can expect the entire algorithm to roughly scale at $O(m\centerdot (n^2 + np))$, where $m$ is the number of resample matrices, $n$ is the number of observations, and $p$ is the number of dimensions of the dataset.
+
 ```{r}
-#| label: speed-memory-scaling-n
+#| label: speed-memory-scaling-n1
 #| echo: false
-#| fig-cap: "Memory and Speed of the CRAB Algorithm as Number of Observations Increases"
+#| fig-cap: "Speed of the CRAB Algorithm Quadratically Increases as Number of Observations Increases"
 
 efficiency_results <- read.csv(file = here::here("analyses/speed_memory_scaling_data/n_speed_memory_test.csv"))
 
 efficiency_results |> 
   ggplot(aes(x = num_obs, y = median)) +
   geom_line() +
-  theme_minimal()
+  geom_point() +
+  theme_bw() +
+  xlab("Number of Observations") +
+  ylab("Seconds (Median)")
+```
+
+
+As for memory scaling, due to the fact that $m$ $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**. 
+
+```{r}
+#| label: speed-memory-scaling-n2
+#| echo: false
+#| fig-cap: "Memory of the CRAB Algorithm Quadratically Increases as Number of Observations Increases"
+
 
 efficiency_results |> 
   ggplot(aes(x = num_obs, y = memory/1024^2)) + 
   geom_line() + 
-  theme_minimal() 
+  geom_point() +
+  theme_bw() +
+  xlab("Number of Observations") +
+  ylab("Memory Allocated (MB)")
+  
 ```
+This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity. 
+
+Unlike when changing the number of observations, increasing the number of dimensions should not have a large impact on the speed and memory performance of the CRAB algorithm itself. Since we rely on the clustering assignments output from the clustering algorithm for the CRAB implementation, the actual differences in time and memory usage come almost completely from the clustering algorithm used. As stated earlier, the time complexity of the k-Means algorithm scales linearly, scaling with $np$.
 
 ```{r}
-#| label: speed-memory-scaling-d
+#| label: speed-memory-scaling-d1
 #| echo: false
-#| fig-cap: "Memory and Speed of the CRAB Algorithm as Number of Dimensions Increases"
+#| fig-cap: "Speed of the CRAB Algorithm Increasing Linearly as Number of Dimensions Increases"
 
 efficiency_results <- read.csv(file = here::here("analyses/speed_memory_scaling_data/d_speed_memory_test.csv"))
 
 efficiency_results |> 
   ggplot(aes(x = num_obs, y = median)) +
   geom_line() +
-  theme_minimal() +
-  xlab("# of Dimensions")
+  geom_point() +
+  theme_bw() +
+  xlab("Number of Dimensions") +
+  ylab("Seconds (Median)")
+```
+
+The k-Means algorithm has a space complexity of $O((n + k) \centerdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. When testing for the memory usage, we see this linear behavior as well.
+
+```{r}
+#| label: speed-memory-scaling-d2
+#| echo: false
+#| fig-cap: "Memory of the CRAB Algorithm Increasing Linearly as Number of Dimensions Increases"
 
 efficiency_results |> 
   ggplot(aes(x = num_obs, y = memory/1024^2)) + 
   geom_line() + 
-  theme_minimal() +
-  xlab("# of Dimensions")
+  geom_point() +
+  theme_bw() +
+  xlab("Number of Dimensions") +
+  ylab("Memory Allocated (MB)")
 ```
-
-Constant up until a certain point, after which it becomes quadratic in terms of both memory and time. 
 
 # Null Distribution
 
@@ -627,8 +665,6 @@ resample_function <- function(data = data,
          result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
        }
     
-       # Note for future self: This calculates the indices, even across y=x line
-       # which means we are doing double the work for this part.
        neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
        result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
      }
