@@ -152,6 +152,8 @@ For the scope of this paper we will go over only a few of the basic unsupervised
 
 ### k-Means Clustering 
 
+
+
 [@ikotun_k-means_2023]
 
 
@@ -160,6 +162,40 @@ For the scope of this paper we will go over only a few of the basic unsupervised
 
 
 ## Literature Review
+
+The main mechanism the CRAB algorithm attempts to leverage is the fact that on a given dataset, if there is an obvious clustering assignment present for the observations, then that overall clustering should also be present in a random subsample of the dataset. Barring very unusual and unlucky resamples, how many clusters there should be and where those clusters are roughly located should stay consistent across resamples.
+
+```{r}
+#| label: iris-subsample-1
+#| echo: false
+#| warning: false
+#| fig-cap: "Three 60% Resamples of the Penguins dataset for Bill Length vs. Flipper Length"
+
+set.seed(100)
+penguins_1 <- penguins |> 
+  drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  mutate(Resample = "1st")
+
+set.seed(200)
+penguins_2 <- penguins |> 
+  drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  mutate(Resample = "2nd")
+
+set.seed(300)
+penguins_3 <- penguins |> 
+  drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  mutate(Resample = "3rd")
+
+rbind.data.frame(penguins_1, penguins_2, penguins_3) |> 
+  ggplot(aes(x = bill_len, y = flipper_len)) +
+  geom_jitter() +
+  facet_grid(~ Resample) +
+  theme_bw()
+```
+
 
 (previous work done on the resampling method)
 [@ben-hur_stability_2001]
@@ -441,11 +477,11 @@ where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample m
 
 ### Scaling with the Number of Observations
 
-As mentioned previously in the paper, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \centerdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
+As mentioned previously in the paper, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \cdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
 
-With the k-Means algorithm, it has a time complexity that scales by the order of $n \centerdot p \centerdot q \centerdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. For our purposes we will only focus on the number of observations and number of dimensions due to the fact that the maximum number of iterations is capped at 10 and the number of clusters tested with the CRAB algorithm is small (less than 40). The k-Means algorithm is ran for each resample matrix as well.
+With the k-Means algorithm, it has a time complexity that scales by the order of $n \cdot p \cdot q \cdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. For our purposes we will only focus on the number of observations and number of dimensions due to the fact that the maximum number of iterations is capped at 10 and the number of clusters tested with the CRAB algorithm is small (less than 40). The k-Means algorithm is ran for each resample matrix as well.
 
-Taking these time complexities into account, we can expect the entire algorithm to roughly scale at $O(m\centerdot (n^2 + np))$, where $m$ is the number of resample matrices, $n$ is the number of observations, and $p$ is the number of dimensions of the dataset.
+Taking these time complexities into account, we can expect the entire algorithm to roughly scale at $O(m\cdot (n^2 + np))$, where $m$ is the number of resample matrices, $n$ is the number of observations, and $p$ is the number of dimensions of the dataset.
 
 ```{r}
 #| label: speed-memory-scaling-n1
@@ -464,7 +500,7 @@ efficiency_results |>
 ```
 
 
-As for memory scaling, due to the fact that $m$ $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**. 
+As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**. 
 
 ```{r}
 #| label: speed-memory-scaling-n2
@@ -501,7 +537,7 @@ efficiency_results |>
   ylab("Seconds (Median)")
 ```
 
-The k-Means algorithm has a space complexity of $O((n + k) \centerdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. When testing for the memory usage, we see this linear behavior as well.
+The k-Means algorithm has a space complexity of $O((n + k) \cdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. When testing for the memory usage, we see this linear behavior as well.
 
 ```{r}
 #| label: speed-memory-scaling-d2
