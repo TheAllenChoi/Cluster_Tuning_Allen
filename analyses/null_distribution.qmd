@@ -22,39 +22,39 @@ source(here::here("functions.R"))
 
 
 ```{r}
-# tic()
-# p <- 2 # Setting it to two-dimensional normal
-# n <- c(100, 500)
-# n_resamples <- c(40)
-# prop_resample <- c(0.8)
-# runs <- c(25)
-# k <- 2:30
-# starting_seed <- 599
-# 
-# grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
-#   rowwise() |>
-#   mutate(res = list(lapply(c(1:runs), function(i) {
-#     temp_seed <- starting_seed * n_resamples * i
-#     set.seed(temp_seed) # very important to set this
-#     data <- data.frame(replicate(p, rnorm(n)))
-#     resample_matrices <- resample_function(data = data,
-#                                            formula = ~ .,
-#                                            k = k,
-#                                            number_of_resamples = n_resamples,
-#                                            proportion_resample = prop_resample,
-#                                            starting_seed = temp_seed)
-#     m_matrix <- mean_matrix(resample_matrices)
-#     return(squared_distance_from_one(m_matrix))
-# 
-#   })))
-# 
-# end_result <- grid_result |>
-#   unnest(res) |>
-#   unnest(res)
-# toc()
-# 
-# write_csv(end_result,
-#           file = here::here("analyses/null_distribution_data/null_test_1.csv"))
+tic()
+p <- 2 # Setting it to two-dimensional normal
+n <- c(100, 200)
+n_resamples <- c(40, 80)
+prop_resample <- c(0.8)
+runs <- c(50)
+k <- 2:30
+starting_seed <- 599
+
+grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
+  rowwise() |>
+  mutate(res = list(lapply(c(1:runs), function(i) {
+    temp_seed <- starting_seed * n_resamples * i * n
+    set.seed(temp_seed) # very important to set this
+    data <- data.frame(replicate(p, rnorm(n)))
+    resample_matrices <- resample_function(data = data,
+                                           formula = ~ .,
+                                           k = k,
+                                           number_of_resamples = n_resamples,
+                                           proportion_resample = prop_resample,
+                                           starting_seed = temp_seed)
+    m_matrix <- mean_matrix(resample_matrices)
+    return(squared_distance_from_one(m_matrix))
+
+  })))
+
+end_result <- grid_result |>
+  unnest(res) |>
+  unnest(res)
+toc()
+
+write_csv(end_result,
+          file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 ```
 66.26 sec
 ```{r}
@@ -101,9 +101,9 @@ end_result |>
   ggplot(aes(x = factor(k), y = res)) +
   geom_boxplot() +
   theme_bw() +
-  ggtitle("2-D Normal Distribution Scores, n = 100, 500, prop_resample = 0.8, 40 resamples,
+  ggtitle("2-D Normal Distribution Scores, n = 100, 200, prop_resample = 0.8, 40 resamples,
 25 runs") +
-  facet_wrap(~n)
+  facet_wrap(~n + n_resamples)
 ```
 
 
