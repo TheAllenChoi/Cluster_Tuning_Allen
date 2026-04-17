@@ -43,11 +43,16 @@ set.seed(599)
 source(here::here("functions.R"))
 ```
 
-# The Problem and What's been Tried
+# Introduction
 
 ## Motivation
 
-Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand, differentiating it from supervised clustering. Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats that we will further explore.
+
+
+Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand. This is different from supervised learning, where both data and labels are available. 
+
+
+Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats that we will further explore.
 
 ### Elbow Method
 The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Similar in behavior to the $R^2$ measure, adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, [@Schubert_2023] takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
@@ -148,18 +153,13 @@ We present the CRAB algorithm, which utilizes random subsampling of a dataset in
 
 ## Overview of Unsupervised Clustering Methods
 
-For the scope of this paper we will go over only a few of the basic unsupervised clustering methods commonly used due to the fact that the CRAB algorithm currently only supports either k-Means or hierarchical clustering. However, in theory the CRAB algorithm framework allows it to work on any unsupervised method as long as the algorithm outputs a cluster assignment for every observation in the dataset. Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
+For the scope of this paper we will go over only the k-Means clustering algorithm [@macqueen_methods_1967]. However, in theory the CRAB algorithm framework allows it to work on any unsupervised method as long as the algorithm outputs a cluster assignment for every observation in the dataset. Alternatives such as hierarchical agglomerative clustering and mixture models [@jaeger_cluster_2023] would also work using this framework.
 
 ### k-Means Clustering 
 
+In terms of unsupervised clustering, k-Means clustering is one is the most well-known as well as simplest methods available. In essence, the algorithm seeks to find clustering assignments that minimize the average squared distance between a set of points and various centroids $k$ that are randomly initialized in a dataset. The clustering results are highly dependent on the initial starting positions of the centroids due to the fact that k-Means often converges to local minima, and when the usual Euclidean distance metric is used it often finds spherical clusters [@ikotun_k-means_2023]. The speed and memory complexity of the algorithm will be explored in Section 3.5.
 
-
-[@ikotun_k-means_2023]
-
-
-### Hierarchical Clustering
-[@jaeger_cluster_2023]
-
+Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
 ## Literature Review
 
@@ -169,36 +169,137 @@ The main mechanism the CRAB algorithm attempts to leverage is the fact that on a
 #| label: iris-subsample-1
 #| echo: false
 #| warning: false
-#| fig-cap: "Three 60% Resamples of the Penguins dataset for Bill Length vs. Flipper Length"
+#| fig-cap: "Three 60% Resamples of the iris dataset for Petal Length vs. Petal Width"
 
 set.seed(100)
-penguins_1 <- penguins |> 
+iris_1 <- iris |> 
   drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  select(Petal.Length, Petal.Width) |> 
+  mutate(Resample = "1st")
+
+iris_1 <- iris_1 |> 
+  mutate(Group = kmeans(iris_1 |> 
+                        mutate(Petal.Length = as.numeric(scale(Petal.Length)),
+                               Petal.Width = as.numeric(scale(Petal.Width))) |> 
+                        pull(Petal.Length, Petal.Width), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 3 ~ 3,
+    Group == 2 ~ 2,
+    .default = Group
+  ))
+
+set.seed(200)
+iris_2 <- iris |> 
+  drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  select(Petal.Length, Petal.Width) |> 
+  mutate(Resample = "2nd")
+
+iris_2 <- iris_2 |> 
+  mutate(Group = kmeans(iris_2 |> 
+                        mutate(Petal.Length = as.numeric(scale(Petal.Length)),
+                               Petal.Width = as.numeric(scale(Petal.Width))) |> 
+                        pull(Petal.Length, Petal.Width), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 3 ~ 1,
+    Group == 1 ~ 3,
+    .default = Group
+  ))
+
+set.seed(300)
+iris_3 <- iris |> 
+  drop_na() |> 
+  slice_sample(prop = 0.6) |> 
+  select(Petal.Length, Petal.Width) |> 
+  mutate(Resample = "3rd")
+
+iris_3 <- iris_3 |> 
+  mutate(Group = kmeans(iris_3 |> 
+                        mutate(Petal.Length = as.numeric(scale(Petal.Length)),
+                               Petal.Width = as.numeric(scale(Petal.Width))) |> 
+                        pull(Petal.Length, Petal.Width), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 3 ~ 2,
+    Group == 2 ~ 3,
+    .default = Group
+  )) |> 
+  mutate(`Same Cluster` = case_when(
+    `Same Cluster` == 1 ~ 2,
+    `Same Cluster` == 2 ~ 1,
+    .default = `Same Cluster`
+  ))
+
+rbind.data.frame(iris_1, iris_2, iris_3) |> 
+  ggplot(aes(x = Petal.Length, y = Petal.Width, color = as.factor(`Same Cluster`))) +
+  geom_point() +
+  facet_grid(~ Resample) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+Even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable. 
+
+```{r}
+#| label: iris-subsample-2
+#| echo: false
+#| warning: false
+#| fig-cap: "Three 60% Resamples of the iris dataset for Sepal Length vs. Sepal Width"
+
+set.seed(1)
+random_norm <- data.frame(replicate(2, rnorm(100)))
+
+set.seed(100)
+random_norm_1 <- random_norm |> 
   slice_sample(prop = 0.6) |> 
   mutate(Resample = "1st")
 
+random_norm_1 <- random_norm_1 |> 
+  mutate(Group = kmeans(random_norm_1 |> pull(X1, X2), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 3 ~ 2,
+    Group == 2 ~ 3,
+    .default = Group
+  ))
+
 set.seed(200)
-penguins_2 <- penguins |> 
-  drop_na() |> 
+random_norm_2 <- random_norm |> 
   slice_sample(prop = 0.6) |> 
   mutate(Resample = "2nd")
 
+random_norm_2 <- random_norm_2 |> 
+  mutate(Group = kmeans(random_norm_2 |> pull(X1, X2), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 2 ~ 1,
+    Group == 1 ~ 2,
+    .default = Group
+  ))
+
 set.seed(300)
-penguins_3 <- penguins |> 
-  drop_na() |> 
+random_norm_3 <- random_norm |> 
   slice_sample(prop = 0.6) |> 
   mutate(Resample = "3rd")
 
-rbind.data.frame(penguins_1, penguins_2, penguins_3) |> 
-  ggplot(aes(x = bill_len, y = flipper_len)) +
-  geom_jitter() +
-  facet_grid(~ Resample) +
-  theme_bw()
-```
+random_norm_3 <- random_norm_3 |> 
+  mutate(Group = kmeans(random_norm_3 |> pull(X1, X2), centers = 3)$cluster) |> 
+  mutate(`Same Cluster` = case_when(
+    Group == 3 ~ 3,
+    Group == 1 ~ 1,
+    .default = Group
+  ))
 
+rbind.data.frame(random_norm_1, random_norm_2, random_norm_3) |> 
+  ggplot(aes(x = X1, y = X2, color = as.factor(`Same Cluster`))) +
+  geom_point() +
+  facet_grid(~ Resample) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
 
 (previous work done on the resampling method)
 [@ben-hur_stability_2001]
+
+
 
 # Details
 
@@ -579,7 +680,8 @@ end_result |>
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
-  facet_wrap(~prop_resample)
+  facet_wrap(~prop_resample) +
+  theme(legend.position = "bottom")
 ```
 
 We see in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. The scores also tend to be higher, scaling with p-dimensions, with a decreasing score distribution as k increases. Notably, all these scores look symmetrically distribution around their mean, with respect to each k.
@@ -600,6 +702,27 @@ end_result |>
 ```
 
 ## Adj-CRAB Score
+
+The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The median CRAB score with respect to each cluster $k$ was then taken.  
+
+```{r}
+#| label: adj-crab-score
+#| echo: false
+#| tbl-cap: "CRAB Score Behavior as k Increases (Fitted Curve vs. Actual Simulation Results) Approximated by a Quartic Regression"
+adj_crab <- read.csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+fitted_curve <- lm(mean ~ k + k_2 + k_3 + k_4, data = adj_crab |> 
+                     mutate(k_2 = k^2,
+                            k_3 = k^3,
+                            k_4 = k^4))
+fitted_curve$fitted.values
+
+adj_crab |> 
+  ggplot(aes(k, mean)) +
+  geom_point() +
+  geom_line(aes(x = k, y = fitted_curve$fitted.values)) +
+  theme_bw()
+```
+
 
 
 
