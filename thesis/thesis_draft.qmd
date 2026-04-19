@@ -36,6 +36,7 @@ library(cluster)
 library(tidyclust)
 library(bench)
 library(cluster)
+options(tinytex.tlmgr_update = FALSE)
 
 registerDoParallel(cores = detectCores())
 set.seed(599)
@@ -47,12 +48,13 @@ source(here::here("functions.R"))
 
 ## Motivation
 
-Unsupervised clustering algorithms are commonly used today when attempting to classify observations in groups where the observation's membership or the number of groups is not known beforehand. Clustering is useful when attempting to get an overview of groups across a dataset, which provides insight into which data points are most similar to other data points. This can provide implicit signals into common traits shared by observations in the same group, which is valuable across a wide range of fields such as biology [@nugent_overview_2010], engineering [@ababneh_energy_2025], health education [@roper_complex_2023], physiology [@bird_unsupervised_2022], and industry [@john_exploration_2023]. 
+Unsupervised clustering algorithms are commonly used today when attempting to classify observations in groups where the observation's membership or the number of groups is not known beforehand. Clustering is useful when attempting to get an overview of groups across a dataset, which provides insight into which data points are most similar to other data points. This can provide implicit signals into common traits shared by observations in the same group, which is valuable across a wide range of fields such as biology [@nugent_overview_2010], engineering [@ababneh_energy_2025], health education [@roper_complex_2023], physiology [@bird_unsupervised_2022], and industry [@john_exploration_2023].
 
-One of the main difficulties associated with unsupervised clustering is due to the fact that the number of clusters or groupings in the dataset is not known beforehand. This can be circumvented through the use of domain knowledge, but even in situations with no prior knowledge there still exist methods to estimate the optimal number of groups. Methods such as the elbow method and Silhouette score [@kodinariya_review_2013] are commonly used to compare multiple candidate values of k over a range to obtain a specific "best-guess" of this optimal value. However, even with these methods there are often disagreements and caveats that we will further explore. In this thesis we introduce a novel method for determining the optimal number of clusters using a resampling-based approach over many subsamples of a dataset. 
+One of the main difficulties associated with unsupervised clustering is due to the fact that the number of clusters or groupings in the dataset is not known beforehand. This can be circumvented through the use of domain knowledge, but even in situations with no prior knowledge there still exist methods to estimate the optimal number of groups. Methods such as the elbow method and Silhouette score [@kodinariya_review_2013] are commonly used to compare multiple candidate values of k over a range to obtain a specific "best-guess" of this optimal value. However, even with these methods there are often disagreements and caveats that we will further explore. In this thesis we introduce a novel method for determining the optimal number of clusters using a resampling-based approach over many subsamples of a dataset.
 
 ### Elbow Method
-The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant, as seen in the example dataset below. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, Schubert takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
+
+The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant, as seen in the example dataset below. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, Schubert takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives".
 
 We demonstrate this below with an example dataset, where:
 
@@ -62,7 +64,7 @@ x_{2}, y_{2} &\sim gamma(\alpha = 1.5) + 2 \\
 x_{3}, y_{3} &\sim gamma(\alpha = 2) + 4 
 \end{aligned}$$
 
-Fifty observations were randomly generated from each distribution, for a total of 150 observations $(X, Y)$ across the three distributions. 
+Fifty observations were randomly generated from each distribution, for a total of 150 observations $(X, Y)$ across the three distributions.
 
 ```{r}
 #| include: false
@@ -134,11 +136,13 @@ bind_rows(res) |>
 As seen in the plot above, there exists no obvious "elbow" at which point the decrease in WCSS changes dramatically; any choice of k between 2 and 4 is a justifiable answer, which makes the ideal choice of k ambiguous.
 
 ### Silhouette Score
+
 The Silhouette Score approach [@ROUSSEEUW198753] is a method proposed to measure how comfortably each observation belongs to its assigned cluster compared to the other possible clusters. As it is defined in the original 1986 paper, the silhouette width $s(i)$ for observation $i$ is defined by:
 
 $$
 s(i) = \frac{b(i) - a(i)}{max\{a(i), b(i)\}}
-$$
+$$ 
+
 where $a(i)$ is defined by the average distance between the $i$ and all other observations in the same cluster, and $b(i)$ is defined by the smallest average distance between $i$ and all other observations in each other respective clusters.
 
 Averaging this score gives a measure of how well a certain number of clusters fits the data, similar to the elbow method. Unlike in the elbow method however, where increasing the number of clusters necessarily decreases the WCSS, the average Silhouette width does not necessarily increase as the number of clusters increases. A high Silhouette Score for a given k means that k is a good number of clusters for that given dataset.
@@ -171,8 +175,6 @@ For the scope of this paper we will go over only the k-Means clustering algorith
 ### k-Means Clustering Details
 
 In terms of unsupervised clustering, k-Means clustering is one is the most well-known as well as simplest methods available. In essence, the algorithm seeks to find clustering assignments that minimize the average squared distance between a set of points and various centroids $k$ that are randomly initialized in a dataset. The clustering results are highly dependent on the initial starting positions of the centroids due to the fact that k-Means often converges to local minima, and when the usual Euclidean distance metric is used it often finds spherical clusters that are centered around these centroids [@ikotun_k-means_2023]. The speed and memory complexity of the algorithm will be explored in Section 3.5.
-
-Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
 ## Literature Review
 
@@ -251,7 +253,7 @@ rbind.data.frame(iris_1, iris_2, iris_3) |>
   theme(legend.position = "bottom")
 ```
 
-This concept is demonstrated here, where even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable. 
+This concept is demonstrated here, where even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable.
 
 ```{r}
 #| label: iris-subsample-2
@@ -317,18 +319,20 @@ Much previous work has been done in leveraging resamples in order to inform the 
 
 Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples. In k-Means, this means that there should be spherical clusters that are relatively far apart for the cluster assignments to be consistent across resamples; a large overlap between groups means that after even after a resample, a large proportion of observations will be not in the same cluster or "enemies" with their neighboring observations, and vice versa.
 
-## Calculated
+## CRAB Details
 
+The CRAB algorithm in detail is defined below:
+
+1.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
+2.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
+3.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
+4.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
+5.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
 
 
 ## Sensitivity
 
-
-
 ## Known Data
-
-
-
 
 ## Performance on penguins dataset
 
@@ -470,11 +474,11 @@ penguins_processed |>
 
 ## Matrix Stacking
 
-We now need a framework for the handling of resampling the matrices. 
+We now need a framework for the handling of resampling the matrices.
 
 We define a "resample matrix" or "cluster assignment matrix" for each resample, where for an $n \times n$ resample matrix $m$, for every pairwise interaction between observation $i$ and observation $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
 
-Denoted another way, for two points $i$, $j$ in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as:
+Denoted another way, for two points $i$, $j$ in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as: 
 $$
 \begin{aligned}
 p_{ij} =
@@ -515,6 +519,7 @@ temp_data |>
   ylab("Scaled Flipper Length") +
   ggtitle("Scaled Bill Length vs. Flipper Length by Species")
 ```
+
 For the purposes of designing the scoring algorithm, we used this dataset with the three "known" clusters in order to fine-tune the behavior of the scores. Ideally, a scoring algorithm would output a lower score when the number of clusters input into the algorithm is not equal to three. Before defining this algorithm, it was helpful to first see the raw mean vector of values after the mean_matrix function, which simply averages the $p_{ij}$ values over all the resample matrices. Note that the values of ones and negative ones were removed, since a vast majority of points either consistently are in the same cluster or are consistently not in the same cluster.
 
 ```{r}
@@ -544,7 +549,6 @@ data.frame(X = temp_vec) |>
   theme_bw() +
   ggtitle("Distribution of Values of Mean Matrix for k = 2")
 ```
-
 
 ```{r}
 #| label: penguins-mean-matrix-vals-2
@@ -577,19 +581,17 @@ data.frame(X = temp_vec) |>
 
 We see that from the above figures that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
 
-This informed our next direction of how to construct the scoring algorithm combining all of this information: Our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.  
+This informed our next direction of how to construct the scoring algorithm combining all of this information: Our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
 
 To make a final score taking all this into account, we decided to take the absolute value of the vectorized mean matrix, which as a side effect would give consistent buddies and consistent rivals the same weight in our score. With this, we would obtain the sum of squared distances from 1, allowing us to penalize those pairs of observations that are inconsistent.
 
 Our final scoring algorithm ends up as:
 
-$\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$,
-where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
+$\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$
+
+, where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
 
 ## Point Contribution
-
-
-
 
 ## Speed and Memory Scaling
 
@@ -617,8 +619,7 @@ efficiency_results |>
   ylab("Seconds (Median)")
 ```
 
-
-As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**. 
+As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**.
 
 ```{r}
 #| label: speed-memory-scaling-n2
@@ -635,7 +636,8 @@ efficiency_results |>
   ylab("Memory Allocated (MB)")
   
 ```
-This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity. 
+
+This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity.
 
 Unlike when changing the number of observations, increasing the number of dimensions should not have a large impact on the speed and memory performance of the CRAB algorithm itself. Since we rely on the clustering assignments output from the clustering algorithm for the CRAB implementation, the actual differences in time and memory usage come almost completely from the clustering algorithm used. As stated earlier, the time complexity of the k-Means algorithm scales linearly, scaling with $np$.
 
@@ -722,7 +724,7 @@ end_result |>
 
 ## Adj-CRAB Score
 
-The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The median CRAB score with respect to each cluster $k$ was then taken.  
+The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The median CRAB score with respect to each cluster $k$ was then taken.
 
 ```{r}
 #| label: adj-crab-score
@@ -742,10 +744,9 @@ adj_crab |>
   theme_bw()
 ```
 
-
-
-
 # Conclusion
+
+Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
 On the penguins dataset, we use 100 resamples and a resample proportion of 80% wih the k-Means algorithm and a given k, using again the scaled bill length and flipper lengths in our dataset.
 
@@ -939,6 +940,7 @@ getPointVecHelper <- function(i, mean_matrix) {
 ```
 
 # CRAB Score Across k Clusters
+
 ```{r}
 crab_k_across <- function(data = data,
                           c_vec = c_vec,
@@ -973,7 +975,6 @@ crab_k_across <- function(data = data,
   return(dplyr::bind_rows(result))
 }
 ```
-
 
 ```{r}
 # resample_matrices <- resample_function(penguins,
