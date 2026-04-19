@@ -47,23 +47,22 @@ source(here::here("functions.R"))
 
 ## Motivation
 
+Unsupervised clustering algorithms are commonly used today when attempting to classify observations in groups where the observation's membership or the number of groups is not known beforehand. Clustering is useful when attempting to get an overview of groups across a dataset, which provides insight into which data points are most similar to other data points. This can provide implicit signals into common traits shared by observations in the same group, which is valuable across a wide range of fields such as biology [@nugent_overview_2010], engineering [@ababneh_energy_2025], health education [@roper_complex_2023], physiology [@bird_unsupervised_2022], and industry [@john_exploration_2023]. 
 
-
-Unsupervised clustering algorithms such as K-Means and hierarchical clustering are commonly used today when the number of clusters in a given dataset is not known beforehand. This is different from supervised learning, where both data and labels are available. 
-
-
-Kodinariya (2013) presents the most common approaches used, such as the elbow method and Silhouette score. However, even with these scores there are often disagreements and caveats that we will further explore.
+One of the main difficulties associated with unsupervised clustering is due to the fact that the number of clusters or groupings in the dataset is not known beforehand. This can be circumvented through the use of domain knowledge, but even in situations with no prior knowledge there still exist methods to estimate the optimal number of groups. Methods such as the elbow method and Silhouette score [@kodinariya_review_2013] are commonly used to compare multiple candidate values of k over a range to obtain a specific "best-guess" of this optimal value. However, even with these methods there are often disagreements and caveats that we will further explore. In this thesis we introduce a novel method for determining the optimal number of clusters using a resampling-based approach over many subsamples of a dataset. 
 
 ### Elbow Method
-The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Similar in behavior to the $R^2$ measure, adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, [@Schubert_2023] takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
+The elbow method [@thorndike_who_1953] is a relatively simple technique that utilizes the plotting of the sum of the Within Cluster Sum of Squares (WCSS) across all clusters at the y axis, against the number of clusters on the x-axis. Adding more clusters necessarily decreases the WCSS due to the fact that adding an extra cluster will mean that at least one observation is closer to that cluster than the others. The question of "how many clusters" is then answered by looking at where this drop-off in WCSS is significant, as seen in the example dataset below. This method however comes with many problems [@Schubert_2023]. The biggest issue is that while for some datasets this "drop-off" in WCSS is easy to visually recognize, sometimes it can be extremely difficult to tell what is considered significant. In fact, Schubert takes a strong approach on this, where they state "Educators should omit the method or at least explain better alternatives". 
 
-We demonstrate this below with an example dataset, where
+We demonstrate this below with an example dataset, where:
 
 $$\begin{aligned}
 x_{1}, y_{1} &\sim gamma(\alpha = 1) \\ 
 x_{2}, y_{2} &\sim gamma(\alpha = 1.5) + 2 \\ 
 x_{3}, y_{3} &\sim gamma(\alpha = 2) + 4 
 \end{aligned}$$
+
+Fifty observations were randomly generated from each distribution, for a total of 150 observations $(X, Y)$ across the three distributions. 
 
 ```{r}
 #| include: false
@@ -96,6 +95,8 @@ res <- lapply(c(1:10), function(i) {
 })
 ```
 
+An overview of this data can be seen below, where the observations are more obviously separated into three clusters, as taken from their respective distributions.
+
 ```{r}
 #| label: example-data-plot
 #| echo: false
@@ -103,23 +104,35 @@ res <- lapply(c(1:10), function(i) {
 ggplot(data = data_color, 
        aes(x = X1, y = X2, color = group)) +
   geom_point() +
-  theme_minimal()
+  theme_bw() +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab("X") +
+  ylab("Y") +
+  labs(color = "Distribution")
 ```
+
+Using this data, we used k-Means clustering across a set of candidate k cluster values from one to ten, visualizing the WCSS across all the k values.
 
 ```{r}
 #| label: elbow-method-example
 #| echo: false
 #| warning: false
-#| fig-cap: "WCSS as Number of Clusters k Increases"
+#| fig-cap: "WCSS Decreases as Number of Clusters k Increases"
 
 bind_rows(res) |> 
   ggplot(aes(x = k, y = WCSS)) +
+  geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
+  geom_vline(xintercept = 3, color = "red", alpha = 0.3) +
+  geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
   geom_point() +
   geom_line() +
-  theme_minimal() +
+  theme_bw() +
   scale_x_continuous(breaks = 1:10) +
-  ggtitle("Elbow Method on Example Dataset")
+  theme(panel.grid.minor.x = element_blank())
 ```
+
+As seen in the plot above, there exists no obvious "elbow" at which point the decrease in WCSS changes dramatically; any choice of k between 2 and 4 is a justifiable answer, which makes the ideal choice of k ambiguous.
+
 ### Silhouette Score
 The Silhouette Score approach [@ROUSSEEUW198753] is a method proposed to measure how comfortably each observation belongs to its assigned cluster compared to the other possible clusters. As it is defined in the original 1986 paper, the silhouette width $s(i)$ for observation $i$ is defined by:
 
@@ -128,7 +141,7 @@ s(i) = \frac{b(i) - a(i)}{max\{a(i), b(i)\}}
 $$
 where $a(i)$ is defined by the average distance between the $i$ and all other observations in the same cluster, and $b(i)$ is defined by the smallest average distance between $i$ and all other observations in each other respective clusters.
 
-Averaging this score gives a measure of how well a certain number of k-Clusters fits the data, similar to the elbow method. Unlike in the elbow method however, where increasing the number of clusters necessarily decreases the WCSS, the average Silhouette width does not necessarily increase as the number of clusters increases. 
+Averaging this score gives a measure of how well a certain number of clusters fits the data, similar to the elbow method. Unlike in the elbow method however, where increasing the number of clusters necessarily decreases the WCSS, the average Silhouette width does not necessarily increase as the number of clusters increases. A high Silhouette Score for a given k means that k is a good number of clusters for that given dataset.
 
 ```{r}
 #| label: silhouette-method-example
@@ -138,26 +151,26 @@ Averaging this score gives a measure of how well a certain number of k-Clusters 
 
 bind_rows(res) |> 
   ggplot(aes(x = k, y = Silhouette)) +
+    geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
+  geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
   geom_point() +
   geom_line() +
   theme_minimal() +
   scale_x_continuous(breaks = 1:10) +
   theme_minimal() +
-  ggtitle("Silhouette Score vs. k")
+  ggtitle("Silhouette Score vs. k") +
+  theme(panel.grid.minor.x = element_blank())
 ```
 
+When looking at the Silhouette Scores on the same example dataset where the elbow method was used, we see that the Silhouette Score are highest for $k = 2$ and next-highest for $k = 4$, indicating that the optimal number of clusters is 2 or 4 for this dataset. Since we know beforehand that the data is distributed from three gamma distributions, this answer is not "correct".
 
-We present the CRAB algorithm, which utilizes random subsampling of a dataset in order to determine the optimal number of clusters for an unsupervised clustering algorithm.
-
-[@r_core_team_2025]. [@ben-hur_stability_2001]. [@tidymodels_2020]. [@tidyclust_2025]. [@tidyverse_2019].
-
-## Overview of Unsupervised Clustering Methods
+## Overview of k-Means Clustering
 
 For the scope of this paper we will go over only the k-Means clustering algorithm [@macqueen_methods_1967]. However, in theory the CRAB algorithm framework allows it to work on any unsupervised method as long as the algorithm outputs a cluster assignment for every observation in the dataset. Alternatives such as hierarchical agglomerative clustering and mixture models [@jaeger_cluster_2023] would also work using this framework.
 
-### k-Means Clustering 
+### k-Means Clustering Details
 
-In terms of unsupervised clustering, k-Means clustering is one is the most well-known as well as simplest methods available. In essence, the algorithm seeks to find clustering assignments that minimize the average squared distance between a set of points and various centroids $k$ that are randomly initialized in a dataset. The clustering results are highly dependent on the initial starting positions of the centroids due to the fact that k-Means often converges to local minima, and when the usual Euclidean distance metric is used it often finds spherical clusters [@ikotun_k-means_2023]. The speed and memory complexity of the algorithm will be explored in Section 3.5.
+In terms of unsupervised clustering, k-Means clustering is one is the most well-known as well as simplest methods available. In essence, the algorithm seeks to find clustering assignments that minimize the average squared distance between a set of points and various centroids $k$ that are randomly initialized in a dataset. The clustering results are highly dependent on the initial starting positions of the centroids due to the fact that k-Means often converges to local minima, and when the usual Euclidean distance metric is used it often finds spherical clusters that are centered around these centroids [@ikotun_k-means_2023]. The speed and memory complexity of the algorithm will be explored in Section 3.5.
 
 Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
@@ -238,13 +251,13 @@ rbind.data.frame(iris_1, iris_2, iris_3) |>
   theme(legend.position = "bottom")
 ```
 
-Even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable. 
+This concept is demonstrated here, where even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable. 
 
 ```{r}
 #| label: iris-subsample-2
 #| echo: false
 #| warning: false
-#| fig-cap: "Three 60% Resamples of the iris dataset for Sepal Length vs. Sepal Width"
+#| fig-cap: "Three 60% Resamples of a 2-D Random Normal Distribution"
 
 set.seed(1)
 random_norm <- data.frame(replicate(2, rnorm(100)))
@@ -296,18 +309,26 @@ rbind.data.frame(random_norm_1, random_norm_2, random_norm_3) |>
   theme(legend.position = "bottom")
 ```
 
-(previous work done on the resampling method)
-[@ben-hur_stability_2001]
+As seen in the plot above, when the clustering structure is not clearly identifiable through k-Means, the clustering assignments outputted from k-Means tends to be significantly different from resample to resample. This is in contrast to the iris dataset example above with three 60% resamples; the clustering assignments tend to be similar even after the resampling procedure was completed.
 
-
+Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the resample matrices obtained from each respective cluster assignments into a score on a cluster-by-cluster basis.
 
 # Details
 
+Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples. In k-Means, this means that there should be spherical clusters that are relatively far apart for the cluster assignments to be consistent across resamples; a large overlap between groups means that after even after a resample, a large proportion of observations will be not in the same cluster or "enemies" with their neighboring observations, and vice versa.
+
 ## Calculated
+
+
 
 ## Sensitivity
 
+
+
 ## Known Data
+
+
+
 
 ## Performance on penguins dataset
 
@@ -447,8 +468,6 @@ penguins_processed |>
 
 # Computational Details
 
-The main principle of our algorithm works off of is the fact that subsamples of a dataset should still capture the overall clustering structure, which is also echoed in the paper from Ben-Hur (2002). This means that given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples.
-
 ## Matrix Stacking
 
 We now need a framework for the handling of resampling the matrices. 
@@ -467,8 +486,6 @@ p_{ij} =
 \end{cases}
 \end{aligned}
 $$
-
-
 
 ## Algorithm Construction
 
@@ -638,7 +655,7 @@ efficiency_results |>
   ylab("Seconds (Median)")
 ```
 
-The k-Means algorithm has a space complexity of $O((n + k) \cdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. When testing for the memory usage, we see this linear behavior as well.
+This is verified through simulation where running the CRAB algorithm on increasing $p$ dimensions only scales the time linearly with respect to $p$. The k-Means algorithm has a space complexity of $O((n + k) \cdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. If we hold $n$ and $k$ to be constant, we would also expect the algorithm to scale linearly in terms of time in respect to the number of dimensions $p$.
 
 ```{r}
 #| label: speed-memory-scaling-d2
@@ -653,6 +670,8 @@ efficiency_results |>
   xlab("Number of Dimensions") +
   ylab("Memory Allocated (MB)")
 ```
+
+Through simulation, barring the anomalous behavior with a small number of dimensions, the expected memory usage almost exactly follows this behavior where the memory allocation increases linearly with respect to $p$ dimensions.
 
 # Null Distribution
 
