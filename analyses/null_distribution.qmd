@@ -57,40 +57,6 @@ write_csv(end_result,
           file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 ```
 66.26 sec
-```{r}
-# tic()
-# p <- 2 # Setting it to two-dimensional normal
-# n <- c(100)
-# n_resamples <- c(20, 50)
-# prop_resample <- c(0.8)
-# runs <- c(50)
-# k <- 2:5
-# starting_seed <- 599
-# 
-# grid_result <- expand_grid(p, n, n_resamples, prop_resample, runs, k) |>
-#   rowwise() |>
-#   mutate(res = list(lapply(c(1:runs), function(i) {
-#     temp_seed <- starting_seed * n_resamples * i
-#     set.seed(temp_seed) # very important to set this
-#     data <- data.frame(replicate(p, rnorm(n)))
-#     resample_matrices <- resample_function(data = data,
-#                                            formula = ~ .,
-#                                            k = k,
-#                                            number_of_resamples = n_resamples,
-#                                            proportion_resample = prop_resample,
-#                                            starting_seed = temp_seed)
-#     m_matrix <- mean_matrix(resample_matrices)
-#     return(squared_distance_from_one(m_matrix))
-# 
-#   })))
-# 
-# end_result <- grid_result |>
-#   unnest(res) |>
-#   unnest(res)
-# toc()
-```
-
-
 
 ```{r}
 end_result <- read_csv(
@@ -101,29 +67,32 @@ end_result |>
   ggplot(aes(x = factor(k), y = res)) +
   geom_boxplot() +
   theme_bw() +
-  ggtitle("2-D Normal Distribution Scores, n = 100, 200, prop_resample = 0.8, 40 resamples,
-25 runs") +
+  ggtitle("2-D Normal Distribution Scores, n = 100, 200, prop_resample = 0.8, 40, 80 resamples,
+50 runs") +
   facet_wrap(~n + n_resamples)
 ```
 
+## Simulation Based Ratios
 
 ```{r}
-# cluster_2_mean <- end_result |> 
-#   filter(n == 100) |> 
-#   group_by(k) |> 
-#   summarize(mean = mean(res)) |> 
-#   filter(k == 2) |> 
-#   pull(mean)
-# 
-# simulation_based_ratio <- end_result |> 
-#   filter(n == 100) |> 
-#   group_by(k) |> 
-#   summarize(mean = mean(res)) |> 
-#   mutate(cluster_2_mean / mean)
-# 
-# 
-# write_csv(simulation_based_ratio,
-#           file = here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+cluster_2_mean <- end_result |>
+  filter(n == 200,
+         n_resamples == 80) |>
+  group_by(k) |>
+  summarize(mean = mean(res)) |>
+  filter(k == 2) |>
+  pull(mean)
+
+simulation_based_ratio <- end_result |>
+  filter(n == 200,
+         n_resamples == 80) |> 
+  group_by(k) |>
+  summarize(mean = mean(res)) |>
+  mutate(cluster_2_mean / mean)
+
+
+write_csv(simulation_based_ratio,
+          file = here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 ```
 
 ## Null dist test

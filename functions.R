@@ -160,3 +160,38 @@ point_contribution <- function(data, mean_matrix) {
 
   return(final_df)
 }
+
+crab_k_across <- function(data = data,
+                          c_vec = c_vec,
+                          formula = ~ .,
+                          number_of_resamples = 80,
+                          proportion_resample = 0.8,
+                          starting_seed = 599,
+                          algorithm = "kmeans") {
+  # Calls the resampling function across the dataset,
+  # with the parameters passed to resampling function.
+
+  # Returns a dataframe with k rows
+  # (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the CRAB
+  # algorithm on the dataset.
+
+  result <- lapply(c(c_vec), function(k) {
+    resample_matrices <- resample_function(
+      data = data,
+      formula = formula,
+      k = k,
+      number_of_resamples = number_of_resamples,
+      proportion_resample = proportion_resample,
+      starting_seed = starting_seed,
+      algorithm = algorithm
+    )
+
+    m_matrix <- mean_matrix(resample_matrices)
+    score <- squared_distance_from_one(m_matrix)
+
+    return(list(k = k,
+                CRAB = score))
+  })
+  return(dplyr::bind_rows(result))
+}

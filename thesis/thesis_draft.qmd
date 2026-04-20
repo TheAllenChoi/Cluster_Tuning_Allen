@@ -178,7 +178,7 @@ In terms of unsupervised clustering, k-Means clustering is one is the most well-
 
 ## Literature Review
 
-The main mechanism the CRAB algorithm attempts to leverage is the fact that on a given dataset, if there is an obvious clustering assignment present for the observations, then that overall clustering should also be present in a random subsample of the dataset. Barring very unusual and unlucky resamples, how many clusters there should be and where those clusters are roughly located should stay consistent across resamples.
+Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the resample matrices obtained from each respective cluster assignments into a score on a cluster-by-cluster basis. For most experiments shown in the thesis unless explicitly stated, we use the same resampling proportion of 80% as stated in Ben-Hur and et al.'s, paper.
 
 ```{r}
 #| label: iris-subsample-1
@@ -250,7 +250,8 @@ rbind.data.frame(iris_1, iris_2, iris_3) |>
   geom_point() +
   facet_grid(~ Resample) +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(color = "Cluster")
 ```
 
 This concept is demonstrated here, where even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable.
@@ -308,31 +309,203 @@ rbind.data.frame(random_norm_1, random_norm_2, random_norm_3) |>
   geom_point() +
   facet_grid(~ Resample) +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(color = "Cluster")
 ```
 
 As seen in the plot above, when the clustering structure is not clearly identifiable through k-Means, the clustering assignments outputted from k-Means tends to be significantly different from resample to resample. This is in contrast to the iris dataset example above with three 60% resamples; the clustering assignments tend to be similar even after the resampling procedure was completed.
 
-Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the resample matrices obtained from each respective cluster assignments into a score on a cluster-by-cluster basis.
+# Algorithm Details
 
-# Details
+The main mechanism the CRAB algorithm attempts to leverage is the fact that on a given dataset, if there is an obvious clustering assignment present for the observations, then that overall clustering should also be present in a random subsample of the dataset. In this case, barring very unusual and unlucky resamples, the location of the clusters in a dataset should stay consistent across resamples.
 
-Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples. In k-Means, this means that there should be spherical clusters that are relatively far apart for the cluster assignments to be consistent across resamples; a large overlap between groups means that after even after a resample, a large proportion of observations will be not in the same cluster or "enemies" with their neighboring observations, and vice versa.
+Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples. In k-Means specifically, this means that there should be spherical clusters that are relatively far apart for the cluster assignments to be consistent across resamples; a large overlap between groups means that after even after a resample, a large proportion of observations will be not in the same cluster or "enemies" with their neighboring observations, and vice versa.
 
-## CRAB Details
+```{r}
+#| label: buddies-example
+#| echo: false
+#| warning: false
+#| fig-cap: "Buddies"
+
+set.seed(1)
+data <- data.frame(rbind(
+  cbind(rnorm(20, 1), rnorm(20, 1)),
+  cbind(rnorm(20, 5), rnorm(20, 5)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2)) |> 
+  rownames_to_column()
+
+kmeans <- k_means(num_clusters = 2) |> 
+  fit(~ X1 + X2,
+      data = data)
+
+cluster_assignments <- data.frame(rowname = data$rowname,
+                                  extract_cluster_assignment(kmeans))
+
+data <- data |> 
+  left_join(cluster_assignments, by = "rowname")
+
+data_1 <- data |> 
+  slice_sample(prop = 0.6) 
+
+data_1_sub <- data |> 
+  slice(15, 19)
+
+data_1 |> 
+  ggplot(aes(x = X1, y = X2, color = `.cluster`)) +
+  geom_point(alpha = 0.6) +
+  theme_bw() +
+  scale_x_continuous(limits = c(-2.5, 2.5)) +
+  scale_y_continuous(limits = c(-2.5, 2.5)) +
+  geom_point(data = data_1_sub, aes(x = X1, y = X2), color = "darkgreen", shape = 21,
+             size = 3.5, fill = "green3", stroke = 1) +
+  scale_color_manual(values = c(Cluster_1 = "orange", Cluster_2 = "purple")) +
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "bottom") +
+  geom_label(label = "Buddies",
+             x = -0.2,
+             y = -0.15,
+             color = "black",
+             size = 3.25,
+             fill = "lightblue",
+             label.padding = unit(0.4, "lines")) +
+  geom_label(label = "Buddies",
+             x = -0.05,
+             y = -1.2,
+             color = "black",
+             size = 3.25,
+             fill = "lightblue",
+             label.padding = unit(0.4, "lines")) +
+  labs(color = "Cluster")
+```
+```{r}
+#| label: enemies-example
+#| echo: false
+#| warning: false
+#| fig-cap: "Enemies"
+
+data_2 <- data |> 
+  slice_sample(prop = 0.6)
+
+data_2_sub <- data |> 
+  slice(15, 27)
+
+data_2 |> 
+  ggplot(aes(x = X1, y = X2, color = `.cluster`)) +
+  geom_point(alpha = 0.6) +
+  theme_bw() +
+  scale_x_continuous(limits = c(-2.5, 2.5)) +
+  scale_y_continuous(limits = c(-2.5, 2.5)) +
+  geom_point(data = data_2_sub, aes(x = X1, y = X2), color = "red3",
+             size = 3.5, shape = 4, fill = 3.5, stroke = 3) +
+  scale_color_manual(values = c(Cluster_1 = "orange", Cluster_2 = "purple")) +
+  theme(panel.grid.minor = element_blank(),
+        legend.position = "bottom") +
+  geom_label(label = "Enemies",
+             x = 0.1,
+             y = -1.1,
+             color = "black",
+             size = 3.25,
+             fill = "pink",
+             label.padding = unit(0.4, "lines")) +
+  geom_label(label = "Enemies",
+             x = 1.55,
+             y = 0.5,
+             color = "black",
+             size = 3.25,
+             fill = "pink",
+             label.padding = unit(0.4, "lines")) +
+  labs(color = "Cluster")
+```
+
+
+## CRAB Score Algorithm
 
 The CRAB algorithm in detail is defined below:
 
-1.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
-2.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
-3.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
-4.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
-5.  Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset.
+1.  Select $m$ random subsamples of the data, each subsample a certain percentage of the full dataset.
+2.  On all $m$ subsamples of the data, use an unsupervised clustering algorithm to obtain cluster assignments for every observation on a subsample by subsample basis.
+3.  For each pair of distinct points $i$, $j$ in the whole dataset, in a given subsample, record whether they were in the same cluster, not in the same cluster, or either point $i$ or point $j$ were in the subsample. Repeat for all $m$ resample matrices.
+4.  Analyze the consistency of agreements or disagreements of the cluster assignments of the pairwise points across the $m$ subsamples.
+5.  Repeat the above steps for a set of $k$ candidate values for the number of clusters, passing in a different $k$ into the unsupervised clustering algorithm.
 
+## Point Contribution
+```{r}
+#| label: point-contribution-example
+#| echo: false
+#| warning: false
+#| fig-cap: "a"
 
-## Sensitivity
+set.seed(551)
+data <- data.frame(rbind(
+  cbind(rnorm(50, 1), rnorm(50, 1)),
+  cbind(rnorm(50, 4), rnorm(50, 4)),
+  cbind(rnorm(50, 7), rnorm(50, 7)),
+  cbind(rnorm(50, 1), rnorm(50, 7)),
+  cbind(rnorm(50, 7), rnorm(50, 1)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+resamples <- resample_function(data, number_of_resamples = 40,
+                               k = 5)
+m_matrix <- mean_matrix(resamples)
+data |>
+  ggplot(aes(x = X1, y = X2, color = point_contribution(data, m_matrix)$singlePointContribution)) +
+  geom_point() +
+  theme_bw() +
+  labs(color = "Contribution") +
+  theme(legend.position = "bottom") +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral")
+```
+
 
 ## Known Data
+
+We validate the performance of the CRAB Score through the 
+
+```{r}
+adj_crab <- read.csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+
+fitted_curve <- lm(`cluster_2_mean.mean` ~ k + k_2 + k_3 + k_4, data = adj_crab |> 
+                     mutate(k_2 = k^2,
+                            k_3 = k^3,
+                            k_4 = k^4))
+
+
+adj_crab |> 
+  ggplot(aes(x = k, y = `cluster_2_mean.mean`)) +
+  geom_point() +
+  geom_line(aes(x = k, y = fitted_curve$fitted.values))
+
+set.seed(551)
+data <- data.frame(rbind(
+  cbind(rnorm(50, 1), rnorm(50, 1)),
+  cbind(rnorm(50, 4), rnorm(50, 4)),
+  cbind(rnorm(50, 7), rnorm(50, 7)),
+  cbind(rnorm(50, 1), rnorm(50, 7)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2))
+
+ggplot(data, aes(X1, X2)) +
+  geom_point() +
+  theme_bw()
+
+adj <- data.frame(k = 2:30,
+           adj_factor = fitted_curve$fitted.values)
+
+crab_k_across(data = data,
+              c_vec = 2:15) |> 
+  left_join(adj, by = "k") |> 
+  mutate(adj_crab = CRAB * adj_factor)
+
+# data_color <- data |> 
+#   mutate(group = as.factor(c(rep(1, 50),
+#                    rep(2, 50),
+#                    rep(3, 50)))
+#   )
+```
+
 
 ## Performance on penguins dataset
 
@@ -403,11 +576,6 @@ crab_k_across <- function(data = data,
                           starting_seed = 599,
                           algorithm = "kmeans",
                           print_pc = FALSE) {
-  # Calls the resampling function across the dataset, with the parameters
-  # passed to the resampling function.
-  
-  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
-  # and a value for the cRab score after running the cRab algorithm on the dataset.
   
   result <- lapply(c(c_vec), function(k) {
     resample_matrices <- resample_function(data = data,
@@ -503,7 +671,7 @@ To illustrate the construction of the final score given this mean matrix, we use
 #| label: penguins-bill-flipper-plot
 #| echo: false
 #| warning: false
-#| fig-cap: "Plot of Penguin Species by Bill and Flipper Length"
+#| fig-cap: "Plot of Penguin Species by Standardized Bill and Flipper Length"
 
 temp_data <- penguins |> 
   mutate(X1 = as.numeric(scale(bill_len)),
@@ -515,12 +683,14 @@ temp_data |>
   ggplot(aes(x = X1, y = X2, color = species)) +
   geom_point() +
   theme_bw() +
-  xlab("Scaled Bill Length") +
-  ylab("Scaled Flipper Length") +
-  ggtitle("Scaled Bill Length vs. Flipper Length by Species")
+  xlab("Standardized Bill Length") +
+  ylab("Standardized Flipper Length") +
+  theme(legend.position = "bottom")
 ```
 
-For the purposes of designing the scoring algorithm, we used this dataset with the three "known" clusters in order to fine-tune the behavior of the scores. Ideally, a scoring algorithm would output a lower score when the number of clusters input into the algorithm is not equal to three. Before defining this algorithm, it was helpful to first see the raw mean vector of values after the mean_matrix function, which simply averages the $p_{ij}$ values over all the resample matrices. Note that the values of ones and negative ones were removed, since a vast majority of points either consistently are in the same cluster or are consistently not in the same cluster.
+For the purposes of designing the scoring algorithm, we used this penguins dataset with the three "known" clusters in order to fine-tune the behavior of the scores. Ideally a scoring algorithm would output a higher score (worse) when the number of clusters input into the algorithm is not equal to three; the ideal output of the scoring algorithm when the number of clusters, $k$, is equal to 3 would be the minimum score over all $k$ candidate cluster values.
+
+Before defining this algorithm, it was helpful to first see the raw mean vector of values after averaging the $p_{ij}$ values over all the $m$ resample matrices. Note that the values of ones and negative ones were removed, since a vast majority of points either consistently are in the same cluster or are consistently not in the same cluster.
 
 ```{r}
 #| label: penguins-mean-matrix-vals-1
@@ -546,9 +716,10 @@ data.frame(X = temp_vec) |>
                      limits = c(-1, 1)) +
   scale_y_continuous(breaks = seq(0, 100, 20),
                      limits = c(0, 100)) +
-  theme_bw() +
-  ggtitle("Distribution of Values of Mean Matrix for k = 2")
+  theme_bw()
 ```
+
+
 
 ```{r}
 #| label: penguins-mean-matrix-vals-2
@@ -575,11 +746,10 @@ data.frame(X = temp_vec) |>
                      limits = c(-1, 1)) +
   scale_y_continuous(breaks = seq(0, 100, 20),
                      limits = c(0, 100)) +
-  theme_bw() +
-  ggtitle("Distribution of Values of Mean Matrix for k = 3")
+  theme_bw()
 ```
 
-We see that from the above figures that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
+We see that from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
 
 This informed our next direction of how to construct the scoring algorithm combining all of this information: Our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
 
@@ -589,9 +759,7 @@ Our final scoring algorithm ends up as:
 
 $\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$
 
-, where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
-
-## Point Contribution
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
 
 ## Speed and Memory Scaling
 
@@ -619,7 +787,7 @@ efficiency_results |>
   ylab("Seconds (Median)")
 ```
 
-As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. This behavior can be seen when testing the CRAB algorithm with k-Means using the **bench::mark** function. It is important to note that a single score was computed from the results of a single call of the CRAB algorithm on a specific k of three using 50 resamples on a random p-dimensional Normal distribution with n observations; in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**.
+As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. For this experiment, we hold constant the number of clusters $k$ at 3 as well as hold the number of resamples to be 50, after which we vary the number of dimensions (p) and the number of observations (n); in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, so once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**.
 
 ```{r}
 #| label: speed-memory-scaling-n2
@@ -707,19 +875,35 @@ end_result |>
 
 We see in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. The scores also tend to be higher, scaling with p-dimensions, with a decreasing score distribution as k increases. Notably, all these scores look symmetrically distribution around their mean, with respect to each k.
 
-## Null Distribution over Resamples
+## Null Distribution over Change in Number of Observations
 
 ```{r}
-#| label: table-results-1
+#| label: null-distribution-2
 #| echo: false
-#| tbl-cap: "Variances for 20% Resample Calculation"
+#| fig-cap: "Distribution of Scores on a Random p-Dimensional Normal Distribution, Faceted by Resample %"
+
+# p <- 2 # Setting it to two-dimensional normal
+# n <- c(100, 200)
+# n_resamples <- c(40, 80)
+# prop_resample <- c(0.8)
+# runs <- c(50)
+# k <- 2:30
+# starting_seed <- 599
+
+end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 
 end_result |> 
-  group_by(factor(k), factor(prop_resample)) |> 
-  filter(prop_resample == 0.2) |> 
-  summarize(var = sd(log(res))) |> 
-  head(5) |> 
-  kable()
+  mutate(Score = res,
+         prop_resample = paste0(prop_resample * 100, "%"),
+         p = factor(p),
+         k = factor(k)) |> 
+  ggplot(aes(x = factor(k), y = Score, color = factor(n))) +
+  geom_boxplot() +
+  theme_minimal() +
+  # ggtitle(
+  #   "Scores on a Random p-Dimensional Normal Distribution") +
+  # labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
+  theme(legend.position = "bottom")
 ```
 
 ## Adj-CRAB Score
@@ -745,6 +929,10 @@ adj_crab |>
 ```
 
 # Conclusion
+
+## Limitations
+
+## Future Work
 
 Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
@@ -834,17 +1022,14 @@ resample_function <- function(data = data,
     
        # Check that the index list is not length 1 for 
        # purposes of n > m for combn
-       # This also fixes a bug in the
-       # previous code where idx was wrongly 
-       # interpreted as single numerical
-       # value as param inside combn
        if (length(idx) > 1) {
          idx <- sort(idx)
          ones <- t(combn(idx, 2))
          result_matrix[cbind(ones[, 1], ones[, 2])] <- 1
        }
     
-       neg_one_idx <- expand.grid(idx, setdiff(random_sample$index, idx))
+       neg_one_idx <- expand.grid(idx,
+                                  setdiff(random_sample$index, idx))
        result_matrix[cbind(neg_one_idx[, 1], neg_one_idx[, 2])] <- -1
      }
      result_matrix[lower.tri(result_matrix, diag = TRUE)] <- NA
@@ -870,10 +1055,6 @@ mean_matrix <- function(list_of_matrices = list_of_matrices) {
     reduce(`+`)
 
   # Returns the matrix of zero-removed means.
-  # The zero-removed mean is the sum over
-  # the (length - the number of zeroes).
-  # The length - the number of zeroes is 
-  # equivalent to the sum over absolute values
   return(numerator / absolute_final)
 }
 ```
@@ -897,10 +1078,7 @@ squared_distance_from_one <- function(mean_matrix = mean_matrix) {
 
 ```{r}
 point_contribution <- function(data, mean_matrix) {
-  # Given the original data (the dataset inputted into the resample_matrices function),
-  # and the mean_matrix, returns each observation's contribution to the CRAB Score.
-  # We don't necessarily require the second arg to be the mean matrix, for example
-  # it could be resample matrix j.
+  # Returns each observation's contribution to the CRAB Score.
   # This is returned as an (index, score) dataframe.
   
   # Get a list of lists containing index and index "CRAB" score
@@ -924,8 +1102,8 @@ point_contribution <- function(data, mean_matrix) {
 
 ```{r}
 getPointVecHelper <- function(i, mean_matrix) {
-  # Given a point i and the mean matrix, should
-  # return vector of all values in the mean matrix corresponding to obs i
+  # Return vector of all values in the 
+  # mean matrix corresponding to obs i
   # after removing all NAs and then taking absolute value
   
   row <- mean_matrix[i, ]
@@ -949,11 +1127,13 @@ crab_k_across <- function(data = data,
                           proportion_resample = 0.8,
                           starting_seed = 599,
                           algorithm = "kmeans") {
-  # Calls the resampling function across the dataset, with the parameters
-  # passed to the resampling function.
+  # Calls the resampling function across the dataset, 
+  # with the parameters passed to resampling function.
   
-  # Returns a dataframe with k rows (one for each element in the c_vec cluster vector)
-  # and a value for the cRab score after running the cRab algorithm on the dataset.
+  # Returns a dataframe with k rows 
+  # (one for each element in the c_vec cluster vector)
+  # and a value for the cRab score after running the CRAB 
+  # algorithm on the dataset.
   
   result <- lapply(c(c_vec), function(k) {
     resample_matrices <- resample_function(
@@ -970,29 +1150,8 @@ crab_k_across <- function(data = data,
     score <- squared_distance_from_one(m_matrix)
 
     return(list(k = k,
-                cRab = score))
+                CRAB = score))
   })
   return(dplyr::bind_rows(result))
 }
-```
-
-```{r}
-# resample_matrices <- resample_function(penguins,
-#                                        number_of_resamples = 40,
-#                                        proportion_resample = 0.8,
-#                                        starting_seed = 100)
-# m_matrix <- mean_matrix(resample_matrices)
-# 
-# 
-# d <- point_contribution(penguins, m_matrix)
-# 
-# test <- lapply(resample_matrices,
-#        point_contribution,
-#        data = penguins)
-# 
-# mean_var_single <- do.call(rbind.data.frame, test) |> 
-#   group_by(index) |> 
-#   summarize(mean = mean(singlePointScore),
-#             var = sd(singlePointScore)) |> 
-#   arrange(desc(var))
 ```
