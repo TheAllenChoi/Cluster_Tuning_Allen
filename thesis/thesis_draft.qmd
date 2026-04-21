@@ -321,11 +321,13 @@ The main mechanism the CRAB algorithm attempts to leverage is the fact that on a
 
 Given two distinct points and their cluster assignments across resamples, the clustering assignments should be consistent if there is an obvious clustering pattern in the dataset. For example, two points that are far away from each other should consistently not be in the same cluster, and two points that are close together should consistently be in the same cluster, even across resamples. In k-Means specifically, this means that there should be spherical clusters that are relatively far apart for the cluster assignments to be consistent across resamples; a large overlap between groups means that after even after a resample, a large proportion of observations will be not in the same cluster or "enemies" with their neighboring observations, and vice versa.
 
+We demonstrate this concept with a example dataset below.
+
 ```{r}
 #| label: buddies-example
 #| echo: false
 #| warning: false
-#| fig-cap: "Buddies"
+#| fig-cap: "Pairs of points considered 'buddies' within a specific resample"
 
 set.seed(1)
 data <- data.frame(rbind(
@@ -378,11 +380,14 @@ data_1 |>
              label.padding = unit(0.4, "lines")) +
   labs(color = "Cluster")
 ```
+
+Due to the relative closeness of these two points, we see that any given resample would ideally have these two points in the same cluster even across many resamples.
+
 ```{r}
 #| label: enemies-example
 #| echo: false
 #| warning: false
-#| fig-cap: "Enemies"
+#| fig-cap: "Pairs of points considered 'enemies' within a specific resample"
 
 data_2 <- data |> 
   slice_sample(prop = 0.6)
@@ -418,10 +423,11 @@ data_2 |>
   labs(color = "Cluster")
 ```
 
+Due to the relative far distance of these two points, we see that any given resample would ideally have these two points in the different cluster even across many resamples. From here, we derive the main idea our algorithm is based off of: across resamples the pairwise relationship between observations should be consistently either "buddies" or "enemies", but not both.
 
 ## CRAB Score Algorithm
 
-The CRAB algorithm in detail is defined below:
+The CRAB algorithm procedure is defined below:
 
 1.  Select $m$ random subsamples of the data, each subsample a certain percentage of the full dataset.
 2.  On all $m$ subsamples of the data, use an unsupervised clustering algorithm to obtain cluster assignments for every observation on a subsample by subsample basis.
@@ -430,7 +436,7 @@ The CRAB algorithm in detail is defined below:
 5.  Repeat the above steps for a set of $k$ candidate values for the number of clusters, passing in a different $k$ into the unsupervised clustering algorithm.
 
 ```{r}
-#| label: buddies-example
+#| label: buddies-example2
 #| echo: false
 #| warning: false
 #| fig-cap: "Buddies"
@@ -453,8 +459,9 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 8
   theme_bw()
 ```
 
+TODO
 ```{r}
-#| label: buddies-example
+#| label: buddies-example3
 #| echo: false
 #| warning: false
 #| fig-cap: "Buddies"
@@ -476,7 +483,7 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 8
                         aesthetics = "fill") +
   theme_bw()
 ```
-
+TODO
 
 ## Point Contribution
 ```{r}
@@ -507,13 +514,18 @@ data |>
   scale_color_distiller(type = "div",
                         palette = "Spectral")
 ```
-
+TODO
 
 ## Known Data
 
-We validate the performance of the CRAB Score through the 
+We validate the performance of the CRAB Score through the use of simulated data as well as other datasets with a known number of clusters to compare against.
 
 ```{r}
+#| label: in-progress-1
+#| echo: false
+#| warning: false
+#| fig-cap: ""
+
 adj_crab <- read.csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 
 fitted_curve <- lm(`cluster_2_mean.mean` ~ k + k_2 + k_3 + k_4, data = adj_crab |> 
@@ -689,11 +701,13 @@ penguins_processed |>
 
 # Computational Details
 
+In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score.
+
 ## Matrix Stacking
 
-We now need a framework for the handling of resampling the matrices.
+In Section 2, we described a framework where "buddies" and "enemies" were compared across resamples. To accommodate for this, we needed a way to hold pairwise information on a resample-by-resample basis. A matrix was the obvious solution for this, where row $i$ and column $j$ describes the pairwise relationship between observation index $i$ and observation index $j$. Since the information is duplicated across the $y = x$ line, where $(i, j) = (j, i)$, we set the entire upper half of the matrix as NA values.
 
-We define a "resample matrix" or "cluster assignment matrix" for each resample, where for an $n \times n$ resample matrix $m$, for every pairwise interaction between observation $i$ and observation $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
+We formally define a "resample matrix" or "cluster assignment matrix" for each resample, where for an $n \times n$ resample matrix $m$, for every pairwise interaction between observation $i$ and observation $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
 
 Denoted another way, for two points $i$, $j$ in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as: 
 $$
@@ -711,6 +725,8 @@ $$
 ## Algorithm Construction
 
 After we have m matrices, we then reduce the matrices, taking the mean with respect to each index pair, ignoring zeroes. We then receive a final "mean matrix" of size n x n, where n is the number of observations in the dataset.
+
+We define a simple example where ...
 
 ## Score Construction
 
@@ -800,23 +816,27 @@ data.frame(X = temp_vec) |>
 
 We see that from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
 
-This informed our next direction of how to construct the scoring algorithm combining all of this information: Our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
+To incorporate all of this information, our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
 
-To make a final score taking all this into account, we decided to take the absolute value of the vectorized mean matrix, which as a side effect would give consistent buddies and consistent rivals the same weight in our score. With this, we would obtain the sum of squared distances from 1, allowing us to penalize those pairs of observations that are inconsistent.
+For the final score, we take the absolute value of the vectorized mean matrix, which as a side effect would give consistent buddies and consistent rivals the same weight in our score. With this, we would obtain the sum of squared distances from 1, allowing us to penalize those pairs of observations that are inconsistent.
 
-Our final scoring algorithm ends up as:
+Therefore, the CRAB Score is formally defined as:
 
-$\sum_{i}^n \sum_{j}^n(1 - |\bar{p}_{ij}|)^2$
+$\frac{\sum_{i}^n \sum_{j}^n(1 - |\bar{p}_{ij}|)^2}{n^2}$
 
 where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
+
+The CRAB Score has a general tendency to increase depending on the sample size, $n$, which required us to take an average instead of the direct sum. This also allows us to compare CRAB Scores across datasets of different sizes.
 
 ## Speed and Memory Scaling
 
 ### Scaling with the Number of Observations
 
-As mentioned previously in the paper, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \cdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
+As mentioned in Section 3.1, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \cdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
 
-With the k-Means algorithm, it has a time complexity that scales by the order of $n \cdot p \cdot q \cdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. For our purposes we will only focus on the number of observations and number of dimensions due to the fact that the maximum number of iterations is capped at 10 and the number of clusters tested with the CRAB algorithm is small (less than 40). The k-Means algorithm is ran for each resample matrix as well.
+The k-Means algorithm has a time complexity that scales by the order of $n \cdot p \cdot q \cdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. 
+
+Here we will focus on assessing the time complexity scale for the number of observations and the number of dimensions. The changes in the time compelxity of the k-Means algorithm itself, which is run for each resample in the CRAB algorithm, are negligible due to the small number and range of clusters.
 
 Taking these time complexities into account, we can expect the entire algorithm to roughly scale at $O(m\cdot (n^2 + np))$, where $m$ is the number of resample matrices, $n$ is the number of observations, and $p$ is the number of dimensions of the dataset.
 
@@ -853,6 +873,8 @@ efficiency_results |>
   ylab("Memory Allocated (MB)")
   
 ```
+
+TODO: Add table with n and p
 
 This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity.
 
@@ -896,9 +918,11 @@ Through simulation, barring the anomalous behavior with a small number of dimens
 
 ## Null Distribution of Scores
 
-It is also interesting information to see what the distribution of scores looks like when there are no clusters in the dataset.
+TODO: Beef up 
 
-The hope was that our scores can be adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust the CRAB score.
+An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
+
+Our scores were adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust the CRAB score.
 
 ```{r}
 #| label: null-distribution-1
@@ -979,15 +1003,18 @@ adj_crab |>
 
 # Conclusion
 
+TODO
+
 ## Limitations
+
+TODO
 
 ## Future Work
 
+TODO
+
 Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
-On the penguins dataset, we use 100 resamples and a resample proportion of 80% wih the k-Means algorithm and a given k, using again the scaled bill length and flipper lengths in our dataset.
-
-(i guess this should also go in the analysis portion??)
 
 # REFERENCES {.unnumbered}
 

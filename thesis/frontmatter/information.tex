@@ -10,10 +10,16 @@
 \def\keywords{Clustering. Unsupervised Clustering. Machine Learning.} % Make sure to end this in a . (i.e. Some, Thing, Interesting.)
 
 \def\abstract{%
-We present a novel clustering score approach relying on a method that classifies
-pairs of points as either "rivals" or "buddies", constructing a score for a given number
-of clusters. We then present results demonstrating the properties of this metric
-on datasets with no clusters.
+Unsupervised clustering algorithms today are used across a wide variety of fields
+such biology, engineering, and industry in order to classify observations into groups where
+labels are not provided. This can provide important latent information regarding the observations within
+groups, as well as insight regarding the groups themselves. In order to judge the optimal number
+of clusters for an unsupervised clustering algorithm, many methods exist such as the elbow method and Silhouette
+Score; however, these methods come with drawbacks and are not necessarily flexible across many
+unsupervised methods. We present a novel clustering score framework relying on a resampling-based approach
+that classifies pairs of points as either "rivals" or "buddies", constructing a score for a given number
+of clusters. We then present results demonstrating the properties of this metric on various simulated and
+real datasets, measuring the performance of the algorithm as well.
 }
 
 \def\tocpagelegnth{1} % Number of pages your Table of Contents is (used to set correct page numbers for List of Tables and List of Figures)
