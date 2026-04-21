@@ -429,6 +429,55 @@ The CRAB algorithm in detail is defined below:
 4.  Analyze the consistency of agreements or disagreements of the cluster assignments of the pairwise points across the $m$ subsamples.
 5.  Repeat the above steps for a set of $k$ candidate values for the number of clusters, passing in a different $k$ into the unsupervised clustering algorithm.
 
+```{r}
+#| label: buddies-example
+#| echo: false
+#| warning: false
+#| fig-cap: "Buddies"
+
+mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 80, k = 2)) |> 
+  data.frame() |> 
+  rownames_to_column("index") |> 
+  pivot_longer(-index) |> 
+  mutate(name = str_sub(name, start = 2)) |> 
+  mutate(index = as.numeric(index),
+         name = as.numeric(name),
+         value = as.numeric(value)) |> 
+  arrange(name, index) |> 
+  rename(c("Point j" = index, "Point i" = name)) |> 
+  ggplot(aes(x = `Point i`, y = `Point j`)) +
+  geom_tile(aes(fill = value)) +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral",
+                        aesthetics = "fill") +
+  theme_bw()
+```
+
+```{r}
+#| label: buddies-example
+#| echo: false
+#| warning: false
+#| fig-cap: "Buddies"
+
+mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 80, k = 3)) |> 
+  data.frame() |> 
+  rownames_to_column("index") |> 
+  pivot_longer(-index) |> 
+  mutate(name = str_sub(name, start = 2)) |> 
+  mutate(index = as.numeric(index),
+         name = as.numeric(name),
+         value = as.numeric(value)) |> 
+  arrange(name, index) |> 
+  rename(c("Point j" = index, "Point i" = name)) |> 
+  ggplot(aes(x = `Point i`, y = `Point j`)) +
+  geom_tile(aes(fill = value)) +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral",
+                        aesthetics = "fill") +
+  theme_bw()
+```
+
+
 ## Point Contribution
 ```{r}
 #| label: point-contribution-example
