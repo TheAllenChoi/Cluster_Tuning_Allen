@@ -806,7 +806,7 @@ To make a final score taking all this into account, we decided to take the absol
 
 Our final scoring algorithm ends up as:
 
-$\sum_{i}^n \sum_{j}^n(1 - \bar{p}_{ij})^2$
+$\sum_{i}^n \sum_{j}^n(1 - |\bar{p}_{ij}|)^2$
 
 where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
 
