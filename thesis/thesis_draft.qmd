@@ -178,7 +178,9 @@ In terms of unsupervised clustering, k-Means clustering is one is the most well-
 
 ## Literature Review
 
-Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the resample matrices obtained from each respective cluster assignments into a score on a cluster-by-cluster basis. For most experiments shown in the thesis unless explicitly stated, we use the same resampling proportion of 80% as stated in Ben-Hur and et al.'s, paper.
+Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the information obtained from each respective cluster assignments into a score on a cluster-by-cluster basis. For most experiments shown in the thesis unless explicitly stated, we use the same resampling proportion of 80% as stated in Ben-Hur and et al.'s, paper.
+
+We demonstrate the basic concept of resampling and the stability of cluster assignments in the example below.
 
 ```{r}
 #| label: iris-subsample-1
@@ -254,7 +256,7 @@ rbind.data.frame(iris_1, iris_2, iris_3) |>
   labs(color = "Cluster")
 ```
 
-This concept is demonstrated here, where even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable.
+As seen in the above figure, even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable.
 
 ```{r}
 #| label: iris-subsample-2
@@ -381,7 +383,7 @@ data_1 |>
   labs(color = "Cluster")
 ```
 
-Due to the relative closeness of these two points, we see that any given resample would ideally have these two points in the same cluster even across many resamples.
+Due to the relative closeness of these two points, we saw that any given resample would ideally have these two points in the same cluster even across many resamples.
 
 ```{r}
 #| label: enemies-example

@@ -11,7 +11,7 @@ library(kableExtra)
 library(foreach)
 library(doParallel)
 library(cluster)
-registerDoParallel(cores = detectCores() - 1)
+registerDoParallel(cores = detectCores())
 set.seed(599)
 
 source(here::here("functions.R"))
@@ -41,27 +41,29 @@ crab_k_across <- function(data = data,
                                            algorithm = algorithm)
     m_matrix <- mean_matrix(resample_matrices)
     score <- squared_distance_from_one(m_matrix)
-    print(k)
-    print(image(m_matrix))
-    e <- point_contribution(data, m_matrix)
+    # print(k)
+    # print(image(m_matrix))
+    # e <- point_contribution(data, m_matrix)
     
-    print(data |> 
-      ggplot(aes(x = V1, y = V2,
-             color = log(e$singlePointContribution))) +
-        geom_jitter() +
-        scale_color_distiller(type = "div",
-                        palette = "Spectral") +
-        theme_minimal()
-      )
+    # print(data |> 
+    #   ggplot(aes(x = V1, y = V2,
+    #          color = log(e$singlePointContribution))) +
+    #     geom_jitter() +
+    #     scale_color_distiller(type = "div",
+    #                     palette = "Spectral") +
+    #     theme_minimal()
+    #   )
     return(list(k = k,
                 cRab = score))
   })
   return(dplyr::bind_rows(result))
 }
 
+
+set.seed(599)
 # https://cs.uef.fi/sipu/datasets/
-test_data <- read.table(here::here("thesis/data/a1.txt")) |> 
-  slice_sample(prop = 0.5) |>
+test_data <- read.table(here::here("thesis/data/s4.txt")) |> 
+  slice_sample(prop = 0.2) |>
   mutate(V1 = as.numeric(scale(V1)),
          V2 = as.numeric(scale(V2)))
 
@@ -71,19 +73,20 @@ test_data |>
 
 
 res <- crab_k_across(test_data,
-                     c_vec = c(10:30))
+                     c_vec = c(2:30))
 
 res |> 
   ggplot(aes(x = as.character(k), y = cRab)) +
   geom_point()
 
-res
+null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 
-# resample <- resample_function(test_data, k = 20)
-# 
-# mean <- mean_matrix(resample)
-
-# image(mean)
+res |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_minimal()
 ```
 
 ## Res test through null hypothesis test
