@@ -922,7 +922,7 @@ TODO: Beef up
 
 An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
 
-Our scores were adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or in this case one cluster). Based off the behavior of this "null distribution", we can adjust the CRAB score.
+Our scores were adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or equivalently if all points are in one large clsuter). Based off of this "null distribution", we adjusted our CRAB Scores to counteract the bias and downward trend in Scores.
 
 ```{r}
 #| label: null-distribution-1
