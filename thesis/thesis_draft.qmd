@@ -522,6 +522,102 @@ TODO
 
 We validate the performance of the CRAB Score through the use of simulated data as well as other datasets with a known number of clusters to compare against.
 
+https://cs.uef.fi/sipu/datasets/
+
+
+### S-sets Datasets
+
+```{r}
+#| label: in-progress-6
+#| echo: false
+#| warning: false
+#| fig-cap: ""
+
+s1 <- read_table("data/s1.txt", col_names = F) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2),
+         S = "S1")
+s2 <- read_table("data/s2.txt", col_names = F) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2),
+         S = "S2")
+s3 <- read_table("data/s3.txt", col_names = F) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2),
+         S = "S3")
+s4 <- read_table("data/s4.txt", col_names = F) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2),
+         S = "S4")
+
+rbind(s1, s2, s3, s4) |> 
+  ggplot(aes(x = X1, y = X2)) +
+  theme_bw() +
+  facet_wrap(~S) +
+  geom_point(size = 0.5) +
+  theme(panel.grid = element_blank())
+  
+```
+We took 50% random points from the dataset due to computation limits. Actual tests ran can be found in analyses/s_dataset_test.qmd
+
+```{r}
+#| label: in-progress-5
+#| echo: false
+#| warning: false
+#| fig-cap: ""
+
+read_csv("data/S_CRAB_RESULT.csv") |> 
+  mutate(S_test = factor(S_test)) |> 
+  ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
+  geom_line(linewidth = 0.8) +
+  geom_point() +
+  theme_bw() +
+  geom_vline(xintercept = 15,
+             linewidth = 0.8,
+             color = "black",
+             linetype = "dotted") +
+  geom_label(label = "True k = 15",
+             x = 17.2,
+             y = 0.25,
+             color = "black",
+             size = 3.25,
+             fill = "lightblue",
+             label.padding = unit(0.4, "lines")) +
+  scale_x_continuous(breaks = seq(2, 30, 2)) +
+  theme(panel.grid.minor.x = element_blank()) +
+  theme(legend.position = "bottom")
+```
+```{r}
+#| label: in-progress-4
+#| echo: false
+#| warning: false
+#| fig-cap: ""
+
+read_csv("data/S_CRAB_RESULT.csv") |> 
+  filter(k >= 8,
+         k <= 22) |> 
+  mutate(S_test = factor(S_test)) |> 
+  ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
+  geom_line(linewidth = 0.8) +
+  geom_point() +
+  theme_bw() +
+  geom_vline(xintercept = 15,
+             linewidth = 0.8,
+             color = "black",
+             linetype = "dotted") +
+  geom_label(label = "True k = 15",
+             x = 17.2,
+             y = 0.25,
+             color = "black",
+             size = 3.25,
+             fill = "lightblue",
+             label.padding = unit(0.4, "lines")) +
+  scale_x_continuous(breaks = seq(2, 30, 2)) +
+  theme(panel.grid.minor.x = element_blank()) +
+  theme(legend.position = "bottom")
+```
+
+
 ```{r}
 #| label: in-progress-1
 #| echo: false

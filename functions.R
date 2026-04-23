@@ -173,7 +173,7 @@ crab_k_across <- function(data = data,
 
   # Returns a dataframe with k rows
   # (one for each element in the c_vec cluster vector)
-  # and a value for the cRab score after running the CRAB
+  # and a value for the CRAB score after running the CRAB
   # algorithm on the dataset.
 
   result <- lapply(c(c_vec), function(k) {
