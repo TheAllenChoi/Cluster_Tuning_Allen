@@ -570,7 +570,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   mutate(S_test = factor(S_test)) |> 
   ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
   geom_line(linewidth = 0.8) +
-  geom_point() +
+  geom_point(aes(shape = S_test)) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
@@ -599,7 +599,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   mutate(S_test = factor(S_test)) |> 
   ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
   geom_line(linewidth = 0.8) +
-  geom_point() +
+  geom_point(aes(shape = S_test)) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
