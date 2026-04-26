@@ -1,0 +1,152 @@
+---
+title: "s_dataset_test"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(foreach)
+library(doParallel)
+library(cluster)
+registerDoParallel(cores = detectCores() - 10)
+set.seed(599)
+
+source(here::here("functions.R"))
+
+null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+```
+
+## S Datasets Test
+
+### S1
+
+```{r}
+set.seed(599)
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/s1.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res_1 <- crab_k_across(test_data,
+                       c_vec = c(2:30)) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |> 
+  mutate(S_test = 1)
+
+res_1 |> 
+  ggplot(aes(x = as.character(k), y = CRAB)) +
+  geom_point()
+
+res_1 |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### S2
+```{r}
+gc()
+set.seed(599)
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/s2.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res_2 <- crab_k_across(test_data,
+                       c_vec = c(2:30)) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |> 
+  mutate(S_test = 2)
+
+res_2 |> 
+  ggplot(aes(x = as.character(k), y = CRAB)) +
+  geom_point()
+
+res_2 |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### S3
+```{r}
+gc()
+set.seed(599)
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/s3.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res_3 <- crab_k_across(test_data,
+                       c_vec = c(2:30)) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |> 
+  mutate(S_test = 3)
+
+res_3 |> 
+  ggplot(aes(x = as.character(k), y = CRAB)) +
+  geom_point()
+
+res_3 |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### S4
+```{r}
+gc()
+set.seed(599)
+# https://cs.uef.fi/sipu/datasets/
+test_data <- read.table(here::here("thesis/data/s4.txt")) |> 
+  slice_sample(prop = 0.5) |>
+  mutate(V1 = as.numeric(scale(V1)),
+         V2 = as.numeric(scale(V2)))
+
+test_data |> 
+  ggplot(aes(x = V1, y = V2)) +
+  geom_point()
+
+
+res_4 <- crab_k_across(test_data,
+                       c_vec = c(2:30)) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |> 
+  mutate(S_test = 4)
+
+res_4 |> 
+  ggplot(aes(x = as.character(k), y = CRAB)) +
+  geom_point()
+
+res_4 |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
+  geom_point() +
+  theme_minimal()
+```
+
+## Save
+
+```{r}
+all_res <- rbind(res_1, res_2, res_3, res_4)
+write.csv(all_res, file = here::here("thesis/data/S_CRAB_RESULT.csv"))
+```
+
