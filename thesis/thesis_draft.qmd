@@ -128,8 +128,8 @@ bind_rows(res) |>
   geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
   geom_point() +
   geom_line() +
-  theme_bw() +
   scale_x_continuous(breaks = 1:10) +
+  theme_bw() +
   theme(panel.grid.minor.x = element_blank())
 ```
 
@@ -159,9 +159,8 @@ bind_rows(res) |>
   geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
   geom_point() +
   geom_line() +
-  theme_minimal() +
   scale_x_continuous(breaks = 1:10) +
-  theme_minimal() +
+  theme_bw() +
   ggtitle("Silhouette Score vs. k") +
   theme(panel.grid.minor.x = element_blank())
 ```
@@ -602,7 +601,7 @@ res <- lapply(c(1:10), function(i) {
 ggplot(data = data, 
        aes(x = V1, y = V2)) +
   geom_point() +
-  theme_minimal() +
+  theme_bw() +
   ggtitle("Scaled Penguins Bill Length vs. Bill Depth")
 
 
@@ -613,7 +612,7 @@ bind_rows(res) |>
              linewidth = 1) +
   geom_point() +
   geom_line() +
-  theme_minimal() +
+  theme_bw() +
   scale_x_continuous(breaks = 1:10) +
   ggtitle("Elbow Method on Example Dataset")
 
@@ -624,9 +623,8 @@ bind_rows(res) |>
              linewidth = 1) +
   geom_point() +
   geom_line() +
-  theme_minimal() +
+  theme_bw() +
   scale_x_continuous(breaks = 1:10) +
-  theme_minimal() +
   ggtitle("Silhouette Score vs. k")
 
 
@@ -661,7 +659,7 @@ crab_k_across <- function(data = data,
           geom_jitter() +
           scale_color_distiller(type = "div",
                           palette = "Spectral") +
-          theme_minimal()
+          theme_bw()
       )
     }
     
@@ -681,10 +679,9 @@ temp_res |>
                linewidth = 1) +
     geom_point() +
     geom_line() +
-    theme_minimal() +
     scale_x_continuous(breaks = 1:10,
                        limits = c(1, 10)) +
-    theme_minimal() +
+    theme_bw() +
     ggtitle("CRAB vs. k")
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
@@ -695,7 +692,7 @@ penguins_processed |>
   mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
   ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
   geom_boxplot() +
-  theme_minimal() +
+  theme_bw() +
   labs(x = "k-Clusters",
        y = "Adj-CRAB Scores") +
   ggtitle("Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster)")
@@ -704,6 +701,9 @@ penguins_processed |>
 # Computational Details
 
 In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score.
+
+https://github.com/TheAllenChoi/Cluster_Tuning_Allen
+
 
 ## Matrix Stacking
 
@@ -818,19 +818,25 @@ data.frame(X = temp_vec) |>
 
 We see that from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
 
-To incorporate all of this information, our algorithm should heavily penalize points that constantly change allegiances and penalize points that are consistent (whether consistently rivals or consistently buddies) less. Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
+To incorporate all of this information, our algorithm heavily penalized points that constantly change allegiances and not penalize points that are consistent (whether consistently rivals or consistently buddies). Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
 
-For the final score, we take the absolute value of the vectorized mean matrix, which as a side effect would give consistent buddies and consistent rivals the same weight in our score. With this, we would obtain the sum of squared distances from 1, allowing us to penalize those pairs of observations that are inconsistent.
+For the final score, we took the absolute value of the vectorized mean matrix, which as a side effect gave consistent buddies and consistent rivals the same weight in our score. With this, we obtained the sum of squared distances from 1, allowing us to penalize those pairs of observations that were inconsistent.
 
 Therefore, the CRAB Score is formally defined as:
 
-$\frac{\sum_{i}^n \sum_{j}^n(1 - |\bar{p}_{ij}|)^2}{n^2}$
+$$
+\begin{aligned}
+\text{CRAB} = \frac{\sum_{i}^n \sum_{j}^n(1 - |\bar{p}_{ij}|)^2}{n^2}
+\end{aligned}
+$$
 
-where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all m resample matrices.
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all $m$ resample matrices. We define the "mean matrix" to be the $\bar{p}$ matrix.
 
-The CRAB Score has a general tendency to increase depending on the sample size, $n$, which required us to take an average instead of the direct sum. This also allows us to compare CRAB Scores across datasets of different sizes.
+The CRAB Score has a general tendency to increase depending on the sample size, $n$, which required us to take an average instead of the direct sum. This also allows us to compare CRAB Scores across datasets of different sizes since we now had a standardized score.
 
 ## Speed and Memory Scaling
+
+TODO: Explain Why important for speed and memory scaling.
 
 ### Scaling with the Number of Observations
 
@@ -879,6 +885,8 @@ efficiency_results |>
 TODO: Add table with n and p
 
 This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity.
+
+### Scaling with the Number of Dimensions
 
 Unlike when changing the number of observations, increasing the number of dimensions should not have a large impact on the speed and memory performance of the CRAB algorithm itself. Since we rely on the clustering assignments output from the clustering algorithm for the CRAB implementation, the actual differences in time and memory usage come almost completely from the clustering algorithm used. As stated earlier, the time complexity of the k-Means algorithm scales linearly, scaling with $np$.
 
@@ -940,7 +948,7 @@ end_result |>
          k = factor(k)) |> 
   ggplot(aes(x = k, y = Score, fill = p)) +
   geom_boxplot() +
-  theme_minimal() +
+  theme_bw() +
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
@@ -974,7 +982,7 @@ end_result |>
          k = factor(k)) |> 
   ggplot(aes(x = factor(k), y = Score, color = factor(n))) +
   geom_boxplot() +
-  theme_minimal() +
+  theme_bw() +
   # ggtitle(
   #   "Scores on a Random p-Dimensional Normal Distribution") +
   # labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
@@ -1007,15 +1015,17 @@ adj_crab |>
 
 TODO
 
-## Limitations
+## Results
 
 TODO
 
-## Future Work
+## Limitations and Future Work
 
 TODO
 
-Note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
+The current framework of the CRAB algorithm requires each observation to be assigned a cluster; note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
+
+As explored in Section 3.4, the limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases. 
 
 
 # REFERENCES {.unnumbered}
