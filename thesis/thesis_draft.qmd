@@ -449,7 +449,7 @@ We validate the performance of the CRAB Score through the use of simulated data 
 
 ### S-sets Datasets
 
-The S-sets datasets https://cs.uef.fi/sipu/datasets/
+There are a significant number of datasets available online in order to gauge the performance of unsupervised clustering algorithms [@ClusteringDatasets]. In this thesis we use a specific subset of those datasets called the 'S-sets', which consist of two-dimensional Gaussian data with 5000 observations and 15 clusters with different overlap over the four different S-sets [@Ssets]. These datasets have a few properties that are desirable for measuring the performance of the CRAB algorithm: each dataset has a constant number of 5000 observations, with a constant number of 15 clusters, and with Gaussian clusters. The consistent observations and clusters over the datasets allow for more accurate comparisons in performance, while the Gaussian clusters synergize well when evaluating the performance when using k-Means clustering with the CRAB algorithm.
 
 ```{r}
 #| label: in-progress-6
