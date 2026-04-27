@@ -141,7 +141,7 @@ The Silhouette Score approach [@ROUSSEEUW198753] is a method proposed to measure
 
 $$
 s(i) = \frac{b(i) - a(i)}{max\{a(i), b(i)\}}
-$$ 
+$$
 
 where $a(i)$ is defined by the average distance between the $i$ and all other observations in the same cluster, and $b(i)$ is defined by the smallest average distance between $i$ and all other observations in each other respective clusters.
 
@@ -382,7 +382,7 @@ data_1 |>
   labs(color = "Cluster")
 ```
 
-Due to the relative closeness of these two points, we saw that any given resample would ideally have these two points in the same cluster even across many resamples.
+Due to the relative closeness of these two points, we see that any given resample should have these two points in the same cluster even across many resamples.
 
 ```{r}
 #| label: enemies-example
@@ -424,11 +424,11 @@ data_2 |>
   labs(color = "Cluster")
 ```
 
-Due to the relative far distance of these two points, we see that any given resample would ideally have these two points in the different cluster even across many resamples. From here, we derive the main idea our algorithm is based off of: across resamples the pairwise relationship between observations should be consistently either "buddies" or "enemies", but not both.
+Due to the relative far distance of these two points, we saw that any given resample would have these two points in the different cluster even across many resamples. From here, we derived the main idea our algorithm is based off of: across resamples the pairwise relationship between observations should be consistently either "buddies" or "enemies", but not both.
 
 ## CRAB Score Algorithm
 
-The CRAB algorithm procedure is defined below:
+We give a high-level overview of the CRAB algorithm details and workflow below:
 
 1.  Select $m$ random subsamples of the data, each subsample a certain percentage of the full dataset.
 2.  On all $m$ subsamples of the data, use an unsupervised clustering algorithm to obtain cluster assignments for every observation on a subsample by subsample basis.
@@ -436,95 +436,20 @@ The CRAB algorithm procedure is defined below:
 4.  Analyze the consistency of agreements or disagreements of the cluster assignments of the pairwise points across the $m$ subsamples.
 5.  Repeat the above steps for a set of $k$ candidate values for the number of clusters, passing in a different $k$ into the unsupervised clustering algorithm.
 
-```{r}
-#| label: buddies-example2
-#| echo: false
-#| warning: false
-#| fig-cap: "Buddies"
+The main parameters the user has control over when utilizing the algorithm are:
 
-mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 80, k = 2)) |> 
-  data.frame() |> 
-  rownames_to_column("index") |> 
-  pivot_longer(-index) |> 
-  mutate(name = str_sub(name, start = 2)) |> 
-  mutate(index = as.numeric(index),
-         name = as.numeric(name),
-         value = as.numeric(value)) |> 
-  arrange(name, index) |> 
-  rename(c("Point j" = index, "Point i" = name)) |> 
-  ggplot(aes(x = `Point i`, y = `Point j`)) +
-  geom_tile(aes(fill = value)) +
-  scale_color_distiller(type = "div",
-                        palette = "Spectral",
-                        aesthetics = "fill") +
-  theme_bw()
-```
-
-TODO
-```{r}
-#| label: buddies-example3
-#| echo: false
-#| warning: false
-#| fig-cap: "Buddies"
-
-mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 80, k = 3)) |> 
-  data.frame() |> 
-  rownames_to_column("index") |> 
-  pivot_longer(-index) |> 
-  mutate(name = str_sub(name, start = 2)) |> 
-  mutate(index = as.numeric(index),
-         name = as.numeric(name),
-         value = as.numeric(value)) |> 
-  arrange(name, index) |> 
-  rename(c("Point j" = index, "Point i" = name)) |> 
-  ggplot(aes(x = `Point i`, y = `Point j`)) +
-  geom_tile(aes(fill = value)) +
-  scale_color_distiller(type = "div",
-                        palette = "Spectral",
-                        aesthetics = "fill") +
-  theme_bw()
-```
-TODO
-
-## Point Contribution
-```{r}
-#| label: point-contribution-example
-#| echo: false
-#| warning: false
-#| fig-cap: "a"
-
-set.seed(551)
-data <- data.frame(rbind(
-  cbind(rnorm(50, 1), rnorm(50, 1)),
-  cbind(rnorm(50, 4), rnorm(50, 4)),
-  cbind(rnorm(50, 7), rnorm(50, 7)),
-  cbind(rnorm(50, 1), rnorm(50, 7)),
-  cbind(rnorm(50, 7), rnorm(50, 1)))) |> 
-  mutate(X1 = scale(X1),
-         X2 = scale(X2))
-
-resamples <- resample_function(data, number_of_resamples = 40,
-                               k = 5)
-m_matrix <- mean_matrix(resamples)
-data |>
-  ggplot(aes(x = X1, y = X2, color = point_contribution(data, m_matrix)$singlePointContribution)) +
-  geom_point() +
-  theme_bw() +
-  labs(color = "Contribution") +
-  theme(legend.position = "bottom") +
-  scale_color_distiller(type = "div",
-                        palette = "Spectral")
-```
-TODO
+-   *formula*: The variables to use when running the CRAB algorithm; by default, it utilizes every variable in the dataset.
+-   *number_of_resamples*: The number of resample matrices to construct when running the CRAB algorithm; by default, it uses 15 resample matrices which may not be enough for large datasets where more resamples are needed to obtain a stable score.
+-   *proportion_resample*: The proportion of the full dataset that the CRAB algorithm randomly samples; by default it is set to 80%, and behavior exploring changing this setting is provided in Section 4.
+-   *algorithm*: The algorithm to use when supplying the cluster assignments to the CRAB algorithm; by default it is set to kmeans, and hierarchical clustering through 'hier_clust' is supported experimentally.
 
 ## Known Data
 
 We validate the performance of the CRAB Score through the use of simulated data as well as other datasets with a known number of clusters to compare against.
 
-https://cs.uef.fi/sipu/datasets/
-
-
 ### S-sets Datasets
+
+The S-sets datasets https://cs.uef.fi/sipu/datasets/
 
 ```{r}
 #| label: in-progress-6
@@ -557,6 +482,7 @@ rbind(s1, s2, s3, s4) |>
   theme(panel.grid = element_blank())
   
 ```
+
 We took 50% random points from the dataset due to computation limits. Actual tests ran can be found in analyses/s_dataset_test.qmd
 
 ```{r}
@@ -574,7 +500,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   geom_vline(xintercept = 15,
              linewidth = 0.8,
              color = "black",
-             linetype = "dotted") +
+             linetype = "dashed") +
   geom_label(label = "True k = 15",
              x = 17.2,
              y = 0.25,
@@ -586,6 +512,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   theme(panel.grid.minor.x = element_blank()) +
   theme(legend.position = "bottom")
 ```
+
 ```{r}
 #| label: in-progress-4
 #| echo: false
@@ -594,7 +521,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 
 read_csv("data/S_CRAB_RESULT.csv") |> 
   filter(k >= 8,
-         k <= 22) |> 
+         k <= 20) |> 
   mutate(S_test = factor(S_test)) |> 
   ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
   geom_line(linewidth = 0.8) +
@@ -603,10 +530,10 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   geom_vline(xintercept = 15,
              linewidth = 0.8,
              color = "black",
-             linetype = "dotted") +
+             linetype = "dashed") +
   geom_label(label = "True k = 15",
              x = 17.2,
-             y = 0.25,
+             y = 0.15,
              color = "black",
              size = 3.25,
              fill = "lightblue",
@@ -615,6 +542,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   theme(panel.grid.minor.x = element_blank()) +
   theme(legend.position = "bottom")
 ```
+TODO: dashed blue/green/red/purple lines of where minima is
 
 
 ```{r}
@@ -656,14 +584,7 @@ crab_k_across(data = data,
               c_vec = 2:15) |> 
   left_join(adj, by = "k") |> 
   mutate(adj_crab = CRAB * adj_factor)
-
-# data_color <- data |> 
-#   mutate(group = as.factor(c(rep(1, 50),
-#                    rep(2, 50),
-#                    rep(3, 50)))
-#   )
 ```
-
 
 ## Performance on penguins dataset
 
@@ -671,135 +592,64 @@ crab_k_across(data = data,
 #| label: penguins-example-temp
 #| echo: false
 #| warning: false
-
-set.seed(551)
-data <- penguins |> 
-  drop_na() |> 
-  mutate(V1 = as.numeric(scale(bill_len)),
-         V2 = as.numeric(scale(bill_dep))) |> 
-  select(V1, V2)
-
-res <- lapply(c(1:10), function(i) {
-  WCSS <- kmeans(data,
-                 centers = i)$tot.withinss
-  if (i == 1) {
-    s <- data.frame(t(c(NA, NA, NA)))
-  } else {
-    s <- cluster::silhouette(kmeans(data, 
-                                    centers = i)$cluster,
-                             dist(data))
-  }
-  return(data.frame(k = as.vector(i),
-                    WCSS = as.vector(WCSS),
-                    Silhouette = mean(s[, 3])))
-})
-
-ggplot(data = data, 
-       aes(x = V1, y = V2)) +
-  geom_point() +
-  theme_bw() +
-  ggtitle("Scaled Penguins Bill Length vs. Bill Depth")
-
-
-bind_rows(res) |> 
-  ggplot(aes(x = k, y = WCSS)) +
-  geom_vline(xintercept = 3,
-             color = "lightblue",
-             linewidth = 1) +
-  geom_point() +
-  geom_line() +
-  theme_bw() +
-  scale_x_continuous(breaks = 1:10) +
-  ggtitle("Elbow Method on Example Dataset")
-
-bind_rows(res) |> 
-  ggplot(aes(x = k, y = Silhouette)) +
-  geom_vline(xintercept = 3,
-             color = "lightblue",
-             linewidth = 1) +
-  geom_point() +
-  geom_line() +
-  theme_bw() +
-  scale_x_continuous(breaks = 1:10) +
-  ggtitle("Silhouette Score vs. k")
-
-
-
-crab_k_across <- function(data = data,
-                          c_vec = c_vec,
-                          formula = ~ .,
-                          number_of_resamples = 80,
-                          proportion_resample = 0.8,
-                          starting_seed = 599,
-                          algorithm = "kmeans",
-                          print_pc = FALSE) {
-  
-  result <- lapply(c(c_vec), function(k) {
-    resample_matrices <- resample_function(data = data,
-                                           formula = formula,
-                                           k = k,
-                                           number_of_resamples = number_of_resamples,
-                                           proportion_resample = proportion_resample,
-                                           starting_seed = starting_seed,
-                                           algorithm = algorithm)
-    m_matrix <- mean_matrix(resample_matrices)
-    score <- squared_distance_from_one(m_matrix)
-    
-    if (print_pc) {
-      print(k)
-      print(image(m_matrix))
-      e <- point_contribution(data, m_matrix)
-      print(data |> 
-        ggplot(aes(x = V1, y = V2,
-               color = log(e$singlePointContribution))) +
-          geom_jitter() +
-          scale_color_distiller(type = "div",
-                          palette = "Spectral") +
-          theme_bw()
-      )
-    }
-    
-    return(list(k = k,
-                CRAB = score))
-  })
-  return(dplyr::bind_rows(result))
-}
-
-temp_res <- crab_k_across(data = data,
-                          c_vec = 2:10) 
-
-temp_res |> 
-  ggplot(aes(x = k, y = CRAB)) +
-    geom_vline(xintercept = 3,
-               color = "lightblue",
-               linewidth = 1) +
-    geom_point() +
-    geom_line() +
-    scale_x_continuous(breaks = 1:10,
-                       limits = c(1, 10)) +
-    theme_bw() +
-    ggtitle("CRAB vs. k")
+#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster)"
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
 null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 
 penguins_processed |> 
+  filter(k < 11) |> 
   left_join(null, by = "k") |> 
   mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
   ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
   geom_boxplot() +
   theme_bw() +
   labs(x = "k-Clusters",
-       y = "Adj-CRAB Scores") +
-  ggtitle("Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster)")
+       y = "Adj-CRAB Scores")
 ```
+
+```{r}
+#| label: penguins-example-temp-table
+#| echo: false
+#| warning: false
+#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster) Table"
+
+penguins_processed |> 
+  filter(k < 11) |> 
+  left_join(null, by = "k") |> 
+  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |>
+  group_by(k) |> 
+  summarize(`Average adj_crab` = mean(adj_crab)) |> 
+  kable() |> 
+  kable_classic(full_width = FALSE)
+```
+
+
+```{r}
+#| label: point-contribution-example
+#| echo: false
+#| warning: false
+#| fig-cap: "a"
+
+resamples <- resample_function(data, number_of_resamples = 40,
+                               k = 3)
+m_matrix <- mean_matrix(resamples)
+data |>
+  ggplot(aes(x = X1, y = X2, color = point_contribution(data, m_matrix)$singlePointContribution)) +
+  geom_point() +
+  theme_bw() +
+  labs(color = "Contribution") +
+  theme(legend.position = "bottom") +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral")
+```
+
 
 # Computational Details
 
 In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score.
 
 https://github.com/TheAllenChoi/Cluster_Tuning_Allen
-
 
 ## Matrix Stacking
 
@@ -808,6 +658,7 @@ In Section 2, we described a framework where "buddies" and "enemies" were compar
 We formally define a "resample matrix" or "cluster assignment matrix" for each resample, where for an $n \times n$ resample matrix $m$, for every pairwise interaction between observation $i$ and observation $j$ we have a value of 1 in the matrix if they belong to the sample cluster, -1 if not, and 0 if either point was not in the resample.
 
 Denoted another way, for two points $i$, $j$ in the resample matrix, the element $p_{ij}$ of the resample matrix is defined as: 
+
 $$
 \begin{aligned}
 p_{ij} =
@@ -824,7 +675,84 @@ $$
 
 After we have m matrices, we then reduce the matrices, taking the mean with respect to each index pair, ignoring zeroes. We then receive a final "mean matrix" of size n x n, where n is the number of observations in the dataset.
 
-We define a simple example where ...
+We refer back to the sample dataset we used in Section 2.1. to demonstrate the concept of the 'mean matrix'.
+
+```{r}
+#| label: section-2-1-dataset-2
+#| echo: false
+#| warning: false
+#| fig-cap: "Example dataset from Section 2.1 with cluster assignments removed (2 Distributions)"
+
+set.seed(1)
+data <- data.frame(rbind(
+  cbind(rnorm(20, 1), rnorm(20, 1)),
+  cbind(rnorm(20, 5), rnorm(20, 5)))) |> 
+  mutate(X1 = scale(X1),
+         X2 = scale(X2)) |> 
+  rownames_to_column()
+
+data |> 
+  ggplot(aes(x = X1, y = X2)) +
+  geom_point() +
+  theme_bw()
+```
+
+Although the cluster assignments have been removed, we see that there are still distinctly two clusters in this dataset. The full mean matrix that is calculated after collapsing the resample matrices is shown below.
+
+```{r}
+#| label: buddies-example2
+#| echo: false
+#| warning: false
+#| fig-cap: "CRAB algorithm ran on Section 2.1 Dataset with k = 2 clusters"
+
+mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 40, k = 2)) |> 
+  data.frame() |> 
+  rownames_to_column("index") |> 
+  pivot_longer(-index) |> 
+  mutate(name = str_sub(name, start = 2)) |> 
+  mutate(index = as.numeric(index),
+         name = as.numeric(name),
+         value = as.numeric(value)) |> 
+  arrange(name, index) |> 
+  rename(c("Point j" = index, "Point i" = name)) |> 
+  ggplot(aes(x = `Point i`, y = `Point j`)) +
+  geom_tile(aes(fill = value)) +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral",
+                        aesthetics = "fill") +
+  theme_bw()
+```
+
+On the heatmap, values $(i, j)$ denote the average $(i, j)$ resample matrix values, excluding NA values where either points did not appear in the dataset. The gray values are removed because the matrix is symmetrical. Points that have values that are closer to '1' can be interpreted as being 'buddies', or in the same cluster, on average. Points that have values that are closer to 
+'-1' can be interpreted as being 'enemies', or not in the same cluster, on average. 
+
+Because the algorithm was ran on a dataset where there was a clear distinction between the 2 clusters and the number of clusters inputted into the algorithm was set at 2, there are no situations where points go from buddies to enemies and vice versa. In this example, points, on average, are always consistently buddies or enemies across resamples.
+
+```{r}
+#| label: buddies-example3
+#| echo: false
+#| warning: false
+#| fig-cap: "CRAB algorithm ran on Section 2.1 Dataset with k = 3 clusters"
+
+mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 40, k = 3)) |> 
+  data.frame() |> 
+  rownames_to_column("index") |> 
+  pivot_longer(-index) |> 
+  mutate(name = str_sub(name, start = 2)) |> 
+  mutate(index = as.numeric(index),
+         name = as.numeric(name),
+         value = as.numeric(value)) |> 
+  arrange(name, index) |> 
+  rename(c("Point j" = index, "Point i" = name)) |> 
+  ggplot(aes(x = `Point i`, y = `Point j`)) +
+  geom_tile(aes(fill = value)) +
+  scale_color_distiller(type = "div",
+                        palette = "Spectral",
+                        aesthetics = "fill") +
+  theme_bw()
+```
+
+When running the CRAB algorithm with k = 3 clusters inputted, the composition of the mean matrix is significantly different compared to the previous example with k = 2. The values in the mean matrix that are close to '0' demonstrate point pairwise relationships that switch between being buddies and being enemies. Since k = 3 is clearly not a good fit for the sample dataset, the mean matrix reflects that through higher instability in the matrix.
 
 ## Score Construction
 
@@ -882,8 +810,6 @@ data.frame(X = temp_vec) |>
   theme_bw()
 ```
 
-
-
 ```{r}
 #| label: penguins-mean-matrix-vals-2
 #| echo: false
@@ -938,7 +864,7 @@ TODO: Explain Why important for speed and memory scaling.
 
 As mentioned in Section 3.1, the CRAB algorithm involves the construction of $m$ resample matrices of size $n \times n$, where n is the number of observations in the dataset. Predictably, the time complexity of the algorithm roughly scales by the order of $m \cdot n^2$, without taking into account the complexity of the resample matrix construction or the clustering algorithm itself. This is because the $m$ $n \times n$ resample matrices are reduced to a single mean matrix for the calculation of the CRAB score.
 
-The k-Means algorithm has a time complexity that scales by the order of $n \cdot p \cdot q \cdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011]. 
+The k-Means algorithm has a time complexity that scales by the order of $n \cdot p \cdot q \cdot k$, where $n$ is the number of observations, $p$ is the number of dimensions, $q$ is the number of iterations, and $k$ is the number of clusters [@wang_ckmeans1ddp_2011].
 
 Here we will focus on assessing the time complexity scale for the number of observations and the number of dimensions. The changes in the time compelxity of the k-Means algorithm itself, which is run for each resample in the CRAB algorithm, are negligible due to the small number and range of clusters.
 
@@ -1024,7 +950,7 @@ Through simulation, barring the anomalous behavior with a small number of dimens
 
 ## Null Distribution of Scores
 
-TODO: Beef up 
+TODO: Beef up
 
 An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
 
@@ -1121,8 +1047,7 @@ TODO
 
 The current framework of the CRAB algorithm requires each observation to be assigned a cluster; note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
-As explored in Section 3.4, the limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases. 
-
+As explored in Section 3.4, the limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases.
 
 # REFERENCES {.unnumbered}
 
