@@ -455,7 +455,7 @@ There are a significant number of datasets available online in order to gauge th
 #| label: in-progress-6
 #| echo: false
 #| warning: false
-#| fig-cap: ""
+#| fig-cap: "Visualizations of the S-sets Datasets (S1, S2, S3, S4)"
 
 s1 <- read_table("data/s1.txt", col_names = F) |> 
   mutate(X1 = scale(X1),
@@ -483,13 +483,13 @@ rbind(s1, s2, s3, s4) |>
   
 ```
 
-We took 50% random points from the dataset due to computation limits. Actual tests ran can be found in analyses/s_dataset_test.qmd
+We took 50% random points from the dataset due to computation limits. As seen in the above figure, the overlap between the 15 Gaussian clusters becomes more and more extreme as we increment through the datasets.
 
 ```{r}
 #| label: in-progress-5
 #| echo: false
 #| warning: false
-#| fig-cap: ""
+#| fig-cap: "Distribution of adj-CRAB scores across k = 2 through k = 30. The true number of clusters is 15."
 
 read_csv("data/S_CRAB_RESULT.csv") |> 
   mutate(S_test = factor(S_test)) |> 
@@ -501,23 +501,46 @@ read_csv("data/S_CRAB_RESULT.csv") |>
              linewidth = 0.8,
              color = "black",
              linetype = "dashed") +
+  scale_x_continuous(breaks = seq(2, 30, 2)) +
+  theme(panel.grid.minor.x = element_blank()) +
+  theme(legend.position = "bottom") +
+  geom_vline(xintercept = 18,
+             linewidth = 0.8,
+             color = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = 4,
+             linewidth = 0.8,
+             color = "lightgreen",
+             linetype = "dashed")  +
+  geom_vline(xintercept = 4,
+             linewidth = 0.8,
+             color = "blue",
+             linetype = "dotted") +
+  geom_vline(xintercept = 16,
+             linewidth = 0.8,
+             color = "purple",
+             linetype = "dashed") +
   geom_label(label = "True k = 15",
-             x = 17.2,
+             x = 15,
              y = 0.25,
              color = "black",
              size = 3.25,
              fill = "lightblue",
-             label.padding = unit(0.4, "lines")) +
-  scale_x_continuous(breaks = seq(2, 30, 2)) +
-  theme(panel.grid.minor.x = element_blank()) +
-  theme(legend.position = "bottom")
+             label.padding = unit(0.4, "lines"))
+
+# read_csv("data/S_CRAB_RESULT.csv") |> 
+#   group_by(S_test) |> 
+#   mutate(min = min(adj_crab)) |> 
+#   filter(adj_crab == min)
 ```
+
+When running the CRAB algorithm across all these datasets, we see that the CRAB algorithm does not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it gets extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
 
 ```{r}
 #| label: in-progress-4
 #| echo: false
 #| warning: false
-#| fig-cap: ""
+#| fig-cap: "Zoomed-In distribution of adj-CRAB scores across k = 8 through k = 20. The true number of clusters is 15"
 
 read_csv("data/S_CRAB_RESULT.csv") |> 
   filter(k >= 8,
@@ -531,18 +554,42 @@ read_csv("data/S_CRAB_RESULT.csv") |>
              linewidth = 0.8,
              color = "black",
              linetype = "dashed") +
+  geom_vline(xintercept = 18,
+             linewidth = 0.8,
+             color = "red",
+             linetype = "dotted") +
+  geom_vline(xintercept = 18,
+             linewidth = 0.8,
+             color = "lightgreen",
+             linetype = "dashed")  +
+  geom_vline(xintercept = 17,
+             linewidth = 0.8,
+             color = "blue",
+             linetype = "dashed") +
+  geom_vline(xintercept = 16,
+             linewidth = 0.8,
+             color = "purple",
+             linetype = "dashed") +
   geom_label(label = "True k = 15",
-             x = 17.2,
+             x = 15,
              y = 0.15,
              color = "black",
              size = 3.25,
              fill = "lightblue",
              label.padding = unit(0.4, "lines")) +
-  scale_x_continuous(breaks = seq(2, 30, 2)) +
+  scale_x_continuous(breaks = seq(2, 30, 1)) +
   theme(panel.grid.minor.x = element_blank()) +
   theme(legend.position = "bottom")
+
+# read_csv("data/S_CRAB_RESULT.csv") |>
+#     filter(k >= 8,
+#            k <= 20) |> 
+#   group_by(S_test) |>
+#   mutate(min = min(adj_crab)) |>
+#   filter(adj_crab == min)
+
 ```
-TODO: dashed blue/green/red/purple lines of where minima is
+When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all (TODO)
 
 
 ```{r}
