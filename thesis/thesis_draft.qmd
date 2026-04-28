@@ -179,7 +179,7 @@ In terms of unsupervised clustering, k-Means clustering is one is the most well-
 
 Much previous work has been done in leveraging resamples in order to inform the number of clusters. One paper computes clustering assignments completed on random resamples on the full dataset, then comparing those resampled cluster assignments against the clustering assignment completed on the full dataset [@levine_resampling_2001]. Another paper obtains the clustering assignments on two random subsamples of a dataset, then computes a metric on how similar the assignments are between those two resamples [@ben-hur_stability_2001]. We seek to extend this concept by running a large number of resamples on random resamples of a dataset, then combining the information obtained from each respective cluster assignments into a score on a cluster-by-cluster basis. For most experiments shown in the thesis unless explicitly stated, we use the same resampling proportion of 80% as stated in Ben-Hur and et al.'s, paper.
 
-We demonstrate the basic concept of resampling and the stability of cluster assignments in the example below.
+We demonstrate the basic concept of resampling and the stability of cluster assignments using the iris dataset [@https://doi.org/10.1111/j.1469-1809.1936.tb02137.x] below.
 
 ```{r}
 #| label: iris-subsample-1
@@ -445,7 +445,7 @@ The main parameters the user has control over when utilizing the algorithm are:
 
 ## Known Data
 
-We validate the performance of the CRAB Score through the use of simulated data as well as other datasets with a known number of clusters to compare against.
+We validate the performance of the CRAB algorithm through the use of simulated data as well as other datasets with a known number of clusters to compare against.
 
 ### S-sets Datasets
 
@@ -455,7 +455,7 @@ There are a significant number of datasets available online in order to gauge th
 #| label: in-progress-6
 #| echo: false
 #| warning: false
-#| fig-cap: "Visualizations of the S-sets Datasets (S1, S2, S3, S4)"
+#| fig-cap: "Visualizations of the S-sets Datasets (S1, S2, S3, S4) after scaling"
 
 s1 <- read_table("data/s1.txt", col_names = F) |> 
   mutate(X1 = scale(X1),
@@ -478,7 +478,7 @@ rbind(s1, s2, s3, s4) |>
   ggplot(aes(x = X1, y = X2)) +
   theme_bw() +
   facet_wrap(~S) +
-  geom_point(size = 0.5) +
+  geom_point(size = 0.05) +
   theme(panel.grid = element_blank())
   
 ```
@@ -534,7 +534,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 #   filter(adj_crab == min)
 ```
 
-When running the CRAB algorithm across all these datasets, we see that the CRAB algorithm does not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it gets extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
+When running the CRAB algorithm across all these datasets, we see that the CRAB algorithm does not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it gets extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. This seems to suggest that there is something inherent in those datasets specifically because the algorithm run on S1 and S4 does not have identical behavior. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
 
 ```{r}
 #| label: in-progress-4
@@ -589,14 +589,27 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 #   filter(adj_crab == min)
 
 ```
-When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all (TODO)
+When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all datasets, we get a predicted cluster number of 18, 18, 17, and 16 across the S1, S2, S3, and S4 datasets respectively. Interestingly, the algorithm seems to have consistent performance across the datasets even as the overlap between clusters increases.
 
+### Random Normal Data
+
+To illustrate the CRAB algorithm working on smaller simulated random data, we created a dataset of 4 Gaussian clusters where the points are distributed as such:
+
+$$
+\begin{aligned}
+x_{1}, y_{1} &\sim Normal(\mu = 1, \sigma = 1) \\ 
+x_{2}, y_{2} &\sim Normal(\mu = 4, \sigma = 1) \\ 
+x_{3}, y_{3} &\sim Normal(\mu = 7, \sigma = 1)  \\
+x_{4} &\sim Normal(\mu = 1, \sigma = 1) \\
+y_{4} &\sim Normal(\mu = 7, \sigma = 1)
+\end{aligned}
+$$
 
 ```{r}
 #| label: in-progress-1
 #| echo: false
 #| warning: false
-#| fig-cap: ""
+#| fig-cap: "Four random simulated Gaussian clusters (Scaled)"
 
 adj_crab <- read.csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 
@@ -605,18 +618,12 @@ fitted_curve <- lm(`cluster_2_mean.mean` ~ k + k_2 + k_3 + k_4, data = adj_crab 
                             k_3 = k^3,
                             k_4 = k^4))
 
-
-adj_crab |> 
-  ggplot(aes(x = k, y = `cluster_2_mean.mean`)) +
-  geom_point() +
-  geom_line(aes(x = k, y = fitted_curve$fitted.values))
-
 set.seed(551)
 data <- data.frame(rbind(
-  cbind(rnorm(50, 1), rnorm(50, 1)),
-  cbind(rnorm(50, 4), rnorm(50, 4)),
-  cbind(rnorm(50, 7), rnorm(50, 7)),
-  cbind(rnorm(50, 1), rnorm(50, 7)))) |> 
+  cbind(rnorm(100, 1), rnorm(100, 1)),
+  cbind(rnorm(100, 3), rnorm(100, 3)),
+  cbind(rnorm(100, 5), rnorm(100, 5)),
+  cbind(rnorm(100, 1), rnorm(100, 5)))) |> 
   mutate(X1 = scale(X1),
          X2 = scale(X2))
 
@@ -627,19 +634,41 @@ ggplot(data, aes(X1, X2)) +
 adj <- data.frame(k = 2:30,
            adj_factor = fitted_curve$fitted.values)
 
-crab_k_across(data = data,
-              c_vec = 2:15) |> 
+crab_data <- crab_k_across(data = data,
+              c_vec = 2:10,
+              number_of_resamples = 40) |> 
   left_join(adj, by = "k") |> 
   mutate(adj_crab = CRAB * adj_factor)
 ```
 
+The simulated dataset has a significant amount of overlap between the four Gaussian clusters, and it is still relatively possible to pick out the individual groups. Since we simulated four Gaussian clusters, we should expect the CRAB algorithm to output a CRAB score that is lowest for $k = 4$, and CRAB scores higher for $k \neq 4$.
+
+```{r}
+#| label: in-progress-10
+#| echo: false
+#| warning: false
+#| fig-cap: "CRAB Score on simulated dataset across k = 2 to k = 10"
+
+crab_data |> 
+  ggplot(aes(x = k, y = adj_crab)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  geom_vline(xintercept = 4,
+             linetype = "dashed")
+```
+
+
+
 ## Performance on penguins dataset
+
+We also wanted to test the performance of the CRAB algorithm on an applied dataset from the real world. The penguins dataset [@RJ-2022-020] was chosen for this since it is commonly used and recognizable. The number of species (3) is also known beforehand, providing a convenient way to measure cluster algorithm performance.
 
 ```{r}
 #| label: penguins-example-temp
 #| echo: false
 #| warning: false
-#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster)"
+#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations)"
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
 null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
@@ -647,9 +676,9 @@ null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ra
 penguins_processed |> 
   filter(k < 11) |> 
   left_join(null, by = "k") |> 
-  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |> 
-  ggplot(aes(x = factor(k, ordered = T), y = adj_crab)) +
-  geom_boxplot() +
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |> 
+  ggplot(aes(x = factor(k, ordered = T), y = adj_crab, group = run)) +
+  geom_line() +
   theme_bw() +
   labs(x = "k-Clusters",
        y = "Adj-CRAB Scores")
@@ -659,12 +688,12 @@ penguins_processed |>
 #| label: penguins-example-temp-table
 #| echo: false
 #| warning: false
-#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (20 Simulations per Cluster) Table"
+#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations per Cluster) Table"
 
 penguins_processed |> 
   filter(k < 11) |> 
   left_join(null, by = "k") |> 
-  mutate(adj_crab = cRab * `cluster_2_mean/mean`) |>
+  mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |>
   group_by(k) |> 
   summarize(`Average adj_crab` = mean(adj_crab)) |> 
   kable() |> 
@@ -1095,6 +1124,8 @@ TODO
 The current framework of the CRAB algorithm requires each observation to be assigned a cluster; note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
 As explored in Section 3.4, the limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases.
+
+No way to know if the number of clusters should just be 1 (no clusters) not really a problem since elbow method and silhouette score have the same constraint.
 
 # REFERENCES {.unnumbered}
 
