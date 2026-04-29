@@ -658,6 +658,43 @@ crab_data |>
              linetype = "dashed")
 ```
 
+On this dataset we see that the CRAB algorithm works extremely well, correctly identifying the number of clusters in the dataset at 4. Barring $k = 3$, all other options are not close to being chosen as a candidate.
+
+```{r}
+### Could add elbow and silhouette to contrast????
+# res <- lapply(c(1:10), function(i) {
+#   WCSS <- kmeans(data,
+#                  centers = i)$tot.withinss
+#   if (i == 1) {
+#     s <- data.frame(t(c(NA, NA, NA)))
+#   } else {
+#     s <- cluster::silhouette(kmeans(data, centers = i)$cluster,
+#                              dist(data))
+#   }
+#   return(data.frame(k = as.vector(i),
+#                     WCSS = as.vector(WCSS),
+#                     Silhouette = mean(s[, 3])))
+# })
+# 
+# bind_rows(res) |> 
+#   ggplot(aes(x = k, y = WCSS)) +
+#   geom_point() +
+#   geom_line() +
+#   scale_x_continuous(breaks = 1:10) +
+#   theme_bw() +
+#   theme(panel.grid.minor.x = element_blank())
+# 
+# bind_rows(res) |> 
+#   ggplot(aes(x = k, y = Silhouette)) +
+#     geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
+#   geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
+#   geom_point() +
+#   geom_line() +
+#   scale_x_continuous(breaks = 2:10) +
+#   theme_bw() +
+#   ggtitle("Silhouette Score vs. k") +
+#   theme(panel.grid.minor.x = element_blank())
+```
 
 
 ## Performance on penguins dataset
@@ -668,7 +705,7 @@ We also wanted to test the performance of the CRAB algorithm on an applied datas
 #| label: penguins-example-temp
 #| echo: false
 #| warning: false
-#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations)"
+#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations with different starting seeds)"
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
 null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
@@ -683,6 +720,8 @@ penguins_processed |>
   labs(x = "k-Clusters",
        y = "Adj-CRAB Scores")
 ```
+
+TODO
 
 ```{r}
 #| label: penguins-example-temp-table
@@ -699,7 +738,7 @@ penguins_processed |>
   kable() |> 
   kable_classic(full_width = FALSE)
 ```
-
+TODO
 
 ```{r}
 #| label: point-contribution-example
@@ -719,7 +758,7 @@ data |>
   scale_color_distiller(type = "div",
                         palette = "Spectral")
 ```
-
+TODO
 
 # Computational Details
 
@@ -1037,20 +1076,22 @@ Our scores were adjusted depending on the behavior of the CRAB scores when there
 #| echo: false
 #| fig-cap: "Distribution of Scores on a Random p-Dimensional Normal Distribution, Faceted by Resample %"
 
-end_result <- read.csv(file = here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
+end_result <- read.csv(file =TODO TODO TODO here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
 
 end_result |> 
   mutate(Score = res,
          prop_resample = paste0(prop_resample * 100, "%"),
          p = factor(p),
          k = factor(k)) |> 
-  ggplot(aes(x = k, y = Score, fill = p)) +
-  geom_boxplot() +
+  filter(p == 2,
+         n == 100) |> 
+  ggplot(aes(x = k, y = Score, group = paste0(p, n))) +
+  geom_line() +
   theme_bw() +
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
-  facet_wrap(~prop_resample) +
+  # facet_wrap(~prop_resample) +
   theme(legend.position = "bottom")
 ```
 
