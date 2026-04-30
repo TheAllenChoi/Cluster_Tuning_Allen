@@ -950,7 +950,7 @@ As for memory scaling, due to the fact that $m$ total $n \times n$ resample matr
 ```{r}
 #| label: speed-memory-scaling-n2
 #| echo: false
-#| fig-cap: "Memory of the CRAB Algorithm Quadratically Increases as Number of Observations Increases"
+#| fig-cap: "Median memory of the CRAB algorithm increases quadratically as the number of observations increases"
 
 
 efficiency_results |> 
@@ -960,16 +960,45 @@ efficiency_results |>
   theme_bw() +
   xlab("Number of Observations") +
   ylab("Memory Allocated (MB)")
-  
 ```
 
-TODO: Add table with n and p
-
 This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity.
+
+```{r}
+#| label: speed-memory-table-1
+#| echo: false
+#| tbl-cap: "Table of memory usage (MB) and computation time (seconds) as the number of observations increases"
+
+efficiency_results |> 
+  mutate(Memory = memory/1024^2) |> 
+  select(num_obs, median, Memory) |> 
+  rename(`# of Observations` = num_obs,
+         `Seconds` = median) |> 
+  mutate(Seconds = round(Seconds, 2),
+         `Memory` = round(Memory, 2)) |> 
+  kable()
+```
 
 ### Scaling with the Number of Dimensions
 
 Unlike when changing the number of observations, increasing the number of dimensions should not have a large impact on the speed and memory performance of the CRAB algorithm itself. Since we rely on the clustering assignments output from the clustering algorithm for the CRAB implementation, the actual differences in time and memory usage come almost completely from the clustering algorithm used. As stated earlier, the time complexity of the k-Means algorithm scales linearly, scaling with $np$.
+
+```{r}
+#| label: speed-memory-table-2
+#| echo: false
+#| tbl-cap: "Table of memory usage (MB) and computation time (seconds) as the number of dimensions increases"
+
+efficiency_results <- read.csv(file = here::here("analyses/speed_memory_scaling_data/d_speed_memory_test.csv"))
+
+efficiency_results |> 
+  mutate(Memory = memory/1024^2) |> 
+  select(num_obs, median, Memory) |> 
+  rename(`# of Observations` = num_obs,
+         `Seconds` = median) |> 
+  mutate(Seconds = round(Seconds, 2),
+         `Memory` = round(Memory, 2)) |> 
+  kable()
+```
 
 ```{r}
 #| label: speed-memory-scaling-d1
@@ -1006,6 +1035,8 @@ efficiency_results |>
 Through simulation, barring the anomalous behavior with a small number of dimensions, the expected memory usage almost exactly follows this behavior where the memory allocation increases linearly with respect to $p$ dimensions.
 
 # Null Distribution
+
+TODO: Beef up
 
 ## Null Distribution of Scores
 
