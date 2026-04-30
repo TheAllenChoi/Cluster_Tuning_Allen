@@ -443,6 +443,8 @@ The main parameters the user has control over when utilizing the algorithm are:
 -   *proportion_resample*: The proportion of the full dataset that the CRAB algorithm randomly samples; by default it is set to 80%, and behavior exploring changing this setting is provided in Section 4.
 -   *algorithm*: The algorithm to use when supplying the cluster assignments to the CRAB algorithm; by default it is set to kmeans, and hierarchical clustering through 'hier_clust' is supported experimentally.
 
+The full function used for the algorithm is available in Appendix A.
+
 ## Known Data
 
 We validate the performance of the CRAB algorithm through the use of simulated data as well as other datasets with a known number of clusters to compare against.
@@ -931,7 +933,7 @@ $$
 \end{aligned}
 $$
 
-where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all $m$ resample matrices. We define the "mean matrix" to be the $\bar{p}$ matrix.
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all $m$ resample matrices. We define the 'mean matrix' to be the $\bar{p}$ matrix. The 'mean matrix' function used in the algorithm is available in Appendix B, while the score calculation using this matrix is available in Appendix C.
 
 The CRAB Score has a general tendency to increase depending on the sample size, $n$, which required us to take an average instead of the direct sum. This also allows us to compare CRAB Scores across datasets of different sizes since we now had a standardized score.
 
@@ -1052,9 +1054,6 @@ end_result |>
   ggplot(aes(x = k, y = Score, fill = prop_resample)) +
   geom_boxplot() +
   theme_bw() +
-  ggtitle(
-    "Scores on a Random p-Dimensional Normal Distribution") +
-  labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
   facet_wrap(~prop_resample) +
   theme(legend.position = "bottom")
 ```
@@ -1095,7 +1094,7 @@ One of the most important properties to look into for the CRAB algorithm is how 
 end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 
 end_result |> 
-  filter(k <= 15) |> 
+  filter(k <= 10) |> 
   mutate(Score = res,
          prop_resample = paste0(prop_resample * 100, "%"),
          p = factor(p),
@@ -1106,17 +1105,18 @@ end_result |>
   facet_wrap(~n_resamples) +
   theme(legend.position = "bottom")
 ```
+Higher sample sizes seem to have asymptotically higher scores on average compared to lower sample sizes, though with smaller values of $k$ the datasets with smaller sample sizes return higher values of the CRAB score on average. (TODO)
+
 
 ```{r}
 #| label: null-distribution-3
 #| echo: false
-#| fig-cap: "Distribution of scores on random p-dimensional normal distribution (proportion resample set to 80%)"
+#| fig-cap: "Distribution of scores across various resample percentages on random p-dimensional normal distribution (n = 200)"
 
-end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
+end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_2.csv"))
 
 end_result |> 
-  filter(k <= 15,
-         n == 200) |> 
+  filter(k < 11) |> 
   mutate(Score = res,
          prop_resample = paste0(prop_resample * 100, "%"),
          p = factor(p),
@@ -1127,7 +1127,7 @@ end_result |>
   theme(legend.position = "bottom")
 ```
 
-
+Not really any differences on the null distribution when the number of resamples varies. (TODO)
 
 ## Adj-CRAB Score
 
@@ -1150,6 +1150,8 @@ adj_crab |>
   geom_line(aes(x = k, y = fitted_curve$fitted.values)) +
   theme_bw()
 ```
+
+TODO
 
 # Conclusion
 
