@@ -1074,9 +1074,9 @@ Our scores were adjusted depending on the behavior of the CRAB scores when there
 ```{r}
 #| label: null-distribution-1
 #| echo: false
-#| fig-cap: "Distribution of Scores on a Random p-Dimensional Normal Distribution, Faceted by Resample %"
+#| fig-cap: "Distribution of Scores on a Random 2-Dimensional Normal Distribution, Faceted by Resample %"
 
-end_result <- read.csv(file =TODO TODO TODO here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
+end_result <- read.csv(file = here::here("analyses/resampling_percentage_data/normal_resample_01.csv"))
 
 end_result |> 
   mutate(Score = res,
@@ -1085,48 +1085,65 @@ end_result |>
          k = factor(k)) |> 
   filter(p == 2,
          n == 100) |> 
-  ggplot(aes(x = k, y = Score, group = paste0(p, n))) +
-  geom_line() +
+  ggplot(aes(x = k, y = Score, fill = prop_resample)) +
+  geom_boxplot() +
   theme_bw() +
   ggtitle(
     "Scores on a Random p-Dimensional Normal Distribution") +
   labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
-  # facet_wrap(~prop_resample) +
+  facet_wrap(~prop_resample) +
   theme(legend.position = "bottom")
 ```
+We wanted to see the exact effects of the various parameters in the algorithm and their effects on the CRAB algorithm. To see this specifically, we ran simulations on random normally distributed data where there were no visible clusters. There were 100 simulation runs per cluster, with 100 resample matrices and n = 100 per sample. Datasets across resampling percentages were the same.
 
-We see in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. The scores also tend to be higher, scaling with p-dimensions, with a decreasing score distribution as k increases. Notably, all these scores look symmetrically distribution around their mean, with respect to each k.
+We see in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. Interestingly, the variability of the scores seemed to decrease overall on average when holding the number of clusters and sample size constant. This suggests that the resample percentage parameter has a significant impact on the end result of the algorithm, although more work needs to be done on how exactly this affects the results of the CRAB algorithm on datasets where clusters exist.
 
-## Null Distribution over Change in Number of Observations
+More details regarding the simulation can be found in **analyses/resampling_percentage.qmd**.
 
+## Null Distribution over Change in Number of Dimensions
 ```{r}
-#| label: null-distribution-2
+#| label: null-distribution-num-dim
 #| echo: false
-#| fig-cap: "Distribution of Scores on a Random p-Dimensional Normal Distribution, Faceted by Resample %"
-
-# p <- 2 # Setting it to two-dimensional normal
-# n <- c(100, 200)
-# n_resamples <- c(40, 80)
-# prop_resample <- c(0.8)
-# runs <- c(50)
-# k <- 2:30
-# starting_seed <- 599
-
-end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
-
+#| fig-cap: "Distribution of Scores on a p-Dimensional Normal Distribution, Faceted by Number of Dimensions"
 end_result |> 
   mutate(Score = res,
          prop_resample = paste0(prop_resample * 100, "%"),
          p = factor(p),
          k = factor(k)) |> 
-  ggplot(aes(x = factor(k), y = Score, color = factor(n))) +
+  filter(prop_resample == "80%") |> 
+  ggplot(aes(x = k, y = Score, fill = p)) +
   geom_boxplot() +
   theme_bw() +
-  # ggtitle(
-  #   "Scores on a Random p-Dimensional Normal Distribution") +
-  # labs(subtitle = "100 Runs per Cluster, 100 Resamples with n=100 per sample") +
   theme(legend.position = "bottom")
 ```
+
+When we examined the behavior of the CRAB algorithm as we scale the number of dimensions, we saw drastically different behavior in the distributions of CRAB Scores. Although it appears that as the number of clusters increases, the CRAB Scores in either case asymtotically level off, the behavior is significantly more right-skewed in the $p = 5$ case compared to the $p = 2$ case. Since we prefer a lower score when choosing the number of clusters, this suggested our algorithm biases for a higher number of clusters when the number of dimensions increases. The number of observations across these two datasets is kept constant at $n = 100$, which may also suggest the curse of dimensionality is contributing here as well. 
+
+## Null Distribution over Change in Number of Observations
+
+One of the most important properties to look into for the CRAB algorithm is how it performs under varying dataset sizes $n$. Since real-world datasets can range from as few as a couple observations to thousands or millions of observations, it is important to make sure the performance and behavior of the algorithm stays consistent with varying $n$. Of particular interest was this behavior on datasets with no clusters; differing null distributions suggest a bias in either direction as sample size changes.
+
+```{r}
+#| label: null-distribution-2
+#| echo: false
+#| fig-cap: "Distribution of scores on random p-dimensional normal distribution (proportion resample set to 80%)"
+
+end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
+
+end_result |> 
+  filter(k <= 15) |> 
+  mutate(Score = res,
+         prop_resample = paste0(prop_resample * 100, "%"),
+         p = factor(p),
+         k = factor(k)) |> 
+  ggplot(aes(x = factor(k), y = Score, fill = factor(n))) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~n_resamples) +
+  theme(legend.position = "bottom")
+```
+
+
 
 ## Adj-CRAB Score
 
