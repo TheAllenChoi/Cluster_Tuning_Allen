@@ -706,31 +706,9 @@ penguins_processed |>
 
 We see that across the 30 random seeds intializing the CRAB algorithm, the average adjusted CRAB Score is lowest for $k = 3$ compared to the other values of $k$ for the penguins dataset.
 
-```{r}
-#| label: point-contribution-example
-#| echo: false
-#| warning: false
-#| fig-cap: "a"
-
-resamples <- resample_function(data, number_of_resamples = 40,
-                               k = 3)
-m_matrix <- mean_matrix(resamples)
-data |>
-  ggplot(aes(x = X1, y = X2, color = point_contribution(data, m_matrix)$singlePointContribution)) +
-  geom_point() +
-  theme_bw() +
-  labs(color = "Contribution") +
-  theme(legend.position = "bottom") +
-  scale_color_distiller(type = "div",
-                        palette = "Spectral")
-```
-TODO
-
 # Computational Details
 
-In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score.
-
-https://github.com/TheAllenChoi/Cluster_Tuning_Allen
+In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score. Full details on the implementation details, code, and documentation can be found on the GitHub repository here: https://github.com/TheAllenChoi/Cluster_Tuning_Allen. 
 
 ## Matrix Stacking
 
@@ -1105,8 +1083,7 @@ end_result |>
   facet_wrap(~n_resamples) +
   theme(legend.position = "bottom")
 ```
-Higher sample sizes seem to have asymptotically higher scores on average compared to lower sample sizes, though with smaller values of $k$ the datasets with smaller sample sizes return higher values of the CRAB score on average. (TODO)
-
+Higher sample sizes seem to have asymptotically higher scores on average compared to lower sample sizes, though with smaller values of $k$ the datasets with smaller sample sizes return higher values of the CRAB score on average. Overall, however, there does not seem to be a drastic difference in behavior in terms of distributions between the various combinations of resample percentage and sample size. One slight outlier to this is the combination of the $n = 200$ and 80 resample matrices group, where the median scores per cluster seem to be more stable than the other combinations for lower values of $k$. 
 
 ```{r}
 #| label: null-distribution-3
@@ -1127,11 +1104,13 @@ end_result |>
   theme(legend.position = "bottom")
 ```
 
-Not really any differences on the null distribution when the number of resamples varies. (TODO)
+When fixing the sample size at 200, we also wanted to observe the change in distributions in CRAB scores for each k in order to see if there is an optimal point at which adding more resample matrices does not help. Since every extra resample matrix requires running the unsupervised clustering algorithm on the dataset another time, it is beneficial in terms of both performance time and memory usage to minimize the number of resamples used. 
+
+On the normally distributed null distributions, it appears that increasing the number of resamples does not change the behavior of the CRAB scores across values of $k$. This, of course, is for the null distributions specifically; it is very likely that the number of resamples has an effect on the distribution of scores if the simulations were instead on datasets with actual clusters.
 
 ## Adj-CRAB Score
 
-The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The sample size was set at 200 and the number of resamples set to 80. The median CRAB score with respect to each cluster $k$ was then taken.
+Taking in all the behavior from the null distributions, the need to adjust the raw CRAB scores then becomes obvious; the distribution of scores through simulation displays monotonically decreasing behavior across all parameters tested as the number of clusters, $k$, increases. This guided our decision to adjust any scores that we get as a function of the parameters of interest as necessary ($n$, resample proportion, number of resamples, $k$). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The sample size was set at 200 and the number of resamples set to 80. The median CRAB score with respect to each cluster $k$ was then taken.
 
 ```{r}
 #| label: adj-crab-score
@@ -1149,7 +1128,7 @@ adj_crab |>
   theme_bw()
 ```
 
-A quartic regression was fit to approximate the simulated data, the fitted values of which are used throughout this thesis in order to adjust the raw CRAB scores. This simulation and approximate fitted curve has a few caveats; in previous simulations we showed that the distribution of 
+A quartic regression was fit to approximate the simulated data, the fitted values of which are used throughout this thesis in order to adjust the raw CRAB scores. This simulation and approximate fitted curve has a few caveats; in previous simulations we showed that the distribution of "null CRAB scores" changes dramatically depending on the choice of $n$, resample proportion, number of resamples, and $k$. We would need to fit all different combinations of these parameters in order to adjust for any possible dataset that could be input into the algorithm. Due to computation constraints, only a single regression where $n = 200$, number of resamples = 80, and resample proportion = 0.8 was used. 
 
 # Conclusion
 
@@ -1157,19 +1136,17 @@ The CRAB algorithm is a viable alternative to other methods used to identify the
 
 ## Results
 
-On both simulated and real-world dataets the CRAB algorithm produces acceptable results where the number of true clusters is known beforehand. Although extensive testing and tuning is still needed in order to adjust the raw CRAB scores outputted by the algorithm, the current state of the algorithm has been shown to be a possible alternative to current existing methods. When comparing directly to the elbow method, utilizing the CRAB algorithm provides a few direct positives. First, compared to the ambiguous nature of the elbow method, the distribution of CRAB scores provides a more objective way to find the ideal number of clusters (finding the minimum adjusted-CRAB score over the range of $k$ candidate values). Compared to the ambiguous nature of the "elbow", 
+On both simulated and real-world dataets the CRAB algorithm produces acceptable results where the number of true clusters is known beforehand. Although extensive testing and tuning is still needed in order to adjust the raw CRAB scores outputted by the algorithm, the current state of the algorithm has been shown to be a possible alternative to current existing methods. When comparing directly to the elbow method and Silhouette Score, utilizing the CRAB algorithm provides a few direct positives. First, compared to the ambiguous nature of the elbow method, the distribution of CRAB scores provides a more objective way to find the ideal number of clusters (finding the minimum adjusted-CRAB score over the range of $k$ candidate values). Compared to the ambiguous nature of the "elbow", where especially for large $k$ the drop-off in WCSS is not visible, there will always be a $k$ in a dataset where the adjusted-CRAB score is smallest. Second, compared to either methods, the framework of the CRAB algorithm theoretically allows any unsupervised clustering algorithm to be used for evaluating a dataset. This allows significantly more flexibility for the algorithm to be used across a wider range of datasets.
 
-The distribution
+The distribution of null distributions of the raw CRAB score, or the performance of the algorithm on datasets with no clustering structure was also evaluated. This served two purposes: to evaluate the consistency of the CRAB scores across $k$ through a wide range of parameters, and to also adjust the CRAB scores to correct for the bias for higher $k$.
 
 ## Limitations and Future Work
 
-TODO
-
 The current framework of the CRAB algorithm requires each observation to be assigned a cluster; note that this means that algorithms such as DBSCAN (Density-Based Spatial Clustering of Applications with Noise) will not work with this framework due to the fact that some observations are classified as "noise" [@ester_density-based_1996].
 
-As explored in Section 3.4, the limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases.
+As explored in Section 3.4, the main limitation of the CRAB algorithm in terms of computation time mainly stems from the loss in performance as the number of observations in the dataset increases. To simplify, doubling the number of observations will roughly quadruple the computation time required to run the CRAB score due to the nature of the matrix calculations of the algorithm. 
 
-No way to know if the number of clusters should just be 1 (no clusters) not really a problem since elbow method and silhouette score have the same constraint.
+Theoretically an adjustment score that takes into account multiple distributions (uniform, normal, exp) and a wide range of $k$, $n$, $p$, number of resamples, and resampling proportions would be ideal. The best-case scenario would be to derive a function for a distribution that is conditional on these parameters in order to fit for every possible dataset and parameter input. 
 
 # REFERENCES {.unnumbered}
 
