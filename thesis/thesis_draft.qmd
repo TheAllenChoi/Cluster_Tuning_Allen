@@ -660,46 +660,11 @@ crab_data |>
 
 On this dataset we see that the CRAB algorithm works extremely well, correctly identifying the number of clusters in the dataset at 4. Barring $k = 3$, all other options are not close to being chosen as a candidate.
 
-```{r}
-### Could add elbow and silhouette to contrast????
-# res <- lapply(c(1:10), function(i) {
-#   WCSS <- kmeans(data,
-#                  centers = i)$tot.withinss
-#   if (i == 1) {
-#     s <- data.frame(t(c(NA, NA, NA)))
-#   } else {
-#     s <- cluster::silhouette(kmeans(data, centers = i)$cluster,
-#                              dist(data))
-#   }
-#   return(data.frame(k = as.vector(i),
-#                     WCSS = as.vector(WCSS),
-#                     Silhouette = mean(s[, 3])))
-# })
-# 
-# bind_rows(res) |> 
-#   ggplot(aes(x = k, y = WCSS)) +
-#   geom_point() +
-#   geom_line() +
-#   scale_x_continuous(breaks = 1:10) +
-#   theme_bw() +
-#   theme(panel.grid.minor.x = element_blank())
-# 
-# bind_rows(res) |> 
-#   ggplot(aes(x = k, y = Silhouette)) +
-#     geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
-#   geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
-#   geom_point() +
-#   geom_line() +
-#   scale_x_continuous(breaks = 2:10) +
-#   theme_bw() +
-#   ggtitle("Silhouette Score vs. k") +
-#   theme(panel.grid.minor.x = element_blank())
-```
-
-
 ## Performance on penguins dataset
 
 We also wanted to test the performance of the CRAB algorithm on an applied dataset from the real world. The penguins dataset [@RJ-2022-020] was chosen for this since it is commonly used and recognizable. The number of species (3) is also known beforehand, providing a convenient way to measure cluster algorithm performance.
+
+We used the **bill_length** variable as well as the **flipper_len** variable from the penguins dataset, standardizing each variable before applying the CRAB algorithm. A graph of the dataset used can be seen in Figure 3.4.
 
 ```{r}
 #| label: penguins-example-temp
@@ -721,13 +686,12 @@ penguins_processed |>
        y = "Adj-CRAB Scores")
 ```
 
-TODO
+To test whether any results we find with the CRAB algorithm is dependent on the starting seed, we ran the CRAB algorithm 30 times on the same penguins dataset, randomly changing the seed each time. We see from the graph that the dip at $k = 3$ and the subsequent increase in the adjusted CRAB score at $k = 4$ is consistent across all starting values of the seed, suggesting that there is little variability between scores within each k, at least with the parameters used for this simulation.
 
 ```{r}
 #| label: penguins-example-temp-table
 #| echo: false
-#| warning: false
-#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations per Cluster) Table"
+#| tbl-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations per Cluster)"
 
 penguins_processed |> 
   filter(k < 11) |> 
@@ -735,10 +699,10 @@ penguins_processed |>
   mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |>
   group_by(k) |> 
   summarize(`Average adj_crab` = mean(adj_crab)) |> 
-  kable() |> 
-  kable_classic(full_width = FALSE)
+  kable()
 ```
-TODO
+
+We see that across the 30 random seeds intializing the CRAB algorithm, the average adjusted CRAB Score is lowest for $k = 3$ compared to the other values of $k$ for the penguins dataset.
 
 ```{r}
 #| label: point-contribution-example
@@ -1143,6 +1107,26 @@ end_result |>
   theme(legend.position = "bottom")
 ```
 
+```{r}
+#| label: null-distribution-3
+#| echo: false
+#| fig-cap: "Distribution of scores on random p-dimensional normal distribution (proportion resample set to 80%)"
+
+end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
+
+end_result |> 
+  filter(k <= 15,
+         n == 200) |> 
+  mutate(Score = res,
+         prop_resample = paste0(prop_resample * 100, "%"),
+         p = factor(p),
+         k = factor(k)) |> 
+  ggplot(aes(x = factor(k), y = Score, fill = factor(n_resamples))) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
 
 
 ## Adj-CRAB Score
@@ -1152,7 +1136,7 @@ The need to adjust the raw CRAB scores then becomes obvious; if the score throug
 ```{r}
 #| label: adj-crab-score
 #| echo: false
-#| tbl-cap: "CRAB Score Behavior as k Increases (Fitted Curve vs. Actual Simulation Results) Approximated by a Quartic Regression"
+#| fig-cap: "CRAB Score Behavior as k Increases (Fitted Curve vs. Actual Simulation Results) Approximated by a Quartic Regression"
 adj_crab <- read.csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
 fitted_curve <- lm(mean ~ k + k_2 + k_3 + k_4, data = adj_crab |> 
                      mutate(k_2 = k^2,
