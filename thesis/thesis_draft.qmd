@@ -441,7 +441,7 @@ The main parameters the user has control over when utilizing the algorithm are:
 -   *formula*: The variables to use when running the CRAB algorithm; by default, it utilizes every variable in the dataset.
 -   *number_of_resamples*: The number of resample matrices to construct when running the CRAB algorithm; by default, it uses 15 resample matrices which may not be enough for large datasets where more resamples are needed to obtain a stable score.
 -   *proportion_resample*: The proportion of the full dataset that the CRAB algorithm randomly samples; by default it is set to 80%, and behavior exploring changing this setting is provided in Section 4.
--   *algorithm*: The algorithm to use when supplying the cluster assignments to the CRAB algorithm; by default it is set to kmeans, and hierarchical clustering through 'hier_clust' is supported experimentally.
+-   *algorithm*: The algorithm to use when supplying the cluster assignments to the CRAB algorithm; by default it is set to kmeans, and hierarchical clustering through "hier_clust" is supported experimentally.
 
 The full function used for the algorithm is available in Appendix A.
 
@@ -451,7 +451,7 @@ We validate the performance of the CRAB algorithm through the use of simulated d
 
 ### S-sets Datasets
 
-There are a significant number of datasets available online in order to gauge the performance of unsupervised clustering algorithms [@ClusteringDatasets]. In this thesis we use a specific subset of those datasets called the 'S-sets', which consist of two-dimensional Gaussian data with 5000 observations and 15 clusters with different overlap over the four different S-sets [@Ssets]. These datasets have a few properties that are desirable for measuring the performance of the CRAB algorithm: each dataset has a constant number of 5000 observations, with a constant number of 15 clusters, and with Gaussian clusters. The consistent observations and clusters over the datasets allow for more accurate comparisons in performance, while the Gaussian clusters synergize well when evaluating the performance when using k-Means clustering with the CRAB algorithm.
+There are a significant number of datasets available online in order to gauge the performance of unsupervised clustering algorithms [@ClusteringDatasets]. In this thesis we use a specific subset of those datasets called the "S-sets", which consist of two-dimensional Gaussian data with 5000 observations and 15 clusters with different overlap over the four different S-sets [@Ssets]. These datasets have a few properties that are desirable for measuring the performance of the CRAB algorithm: each dataset has a constant number of 5000 observations, with a constant number of 15 clusters, and with Gaussian clusters. The consistent observations and clusters over the datasets allow for more accurate comparisons in performance, while the Gaussian clusters synergize well when evaluating the performance when using k-Means clustering with the CRAB algorithm.
 
 ```{r}
 #| label: in-progress-6
@@ -756,7 +756,7 @@ $$
 
 After we have m matrices, we then reduce the matrices, taking the mean with respect to each index pair, ignoring zeroes. We then receive a final "mean matrix" of size n x n, where n is the number of observations in the dataset.
 
-We refer back to the sample dataset we used in Section 2.1. to demonstrate the concept of the 'mean matrix'.
+We refer back to the sample dataset we used in Section 2.1. to demonstrate the concept of the "mean matrix".
 
 ```{r}
 #| label: section-2-1-dataset-2
@@ -804,8 +804,8 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 4
   theme_bw()
 ```
 
-On the heatmap, values $(i, j)$ denote the average $(i, j)$ resample matrix values, excluding NA values where either points did not appear in the dataset. The gray values are removed because the matrix is symmetrical. Points that have values that are closer to '1' can be interpreted as being 'buddies', or in the same cluster, on average. Points that have values that are closer to 
-'-1' can be interpreted as being 'enemies', or not in the same cluster, on average. 
+On the heatmap, values $(i, j)$ denote the average $(i, j)$ resample matrix values, excluding NA values where either points did not appear in the dataset. The gray values are removed because the matrix is symmetrical. Points that have values that are closer to "1" can be interpreted as being "buddies", or in the same cluster, on average. Points that have values that are closer to 
+"-1" can be interpreted as being "enemies", or not in the same cluster, on average. 
 
 Because the algorithm was ran on a dataset where there was a clear distinction between the 2 clusters and the number of clusters inputted into the algorithm was set at 2, there are no situations where points go from buddies to enemies and vice versa. In this example, points, on average, are always consistently buddies or enemies across resamples.
 
@@ -833,7 +833,7 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 4
   theme_bw()
 ```
 
-When running the CRAB algorithm with k = 3 clusters inputted, the composition of the mean matrix is significantly different compared to the previous example with k = 2. The values in the mean matrix that are close to '0' demonstrate point pairwise relationships that switch between being buddies and being enemies. Since k = 3 is clearly not a good fit for the sample dataset, the mean matrix reflects that through higher instability in the matrix.
+When running the CRAB algorithm with k = 3 clusters inputted, the composition of the mean matrix is significantly different compared to the previous example with k = 2. The values in the mean matrix that are close to "0" demonstrate point pairwise relationships that switch between being buddies and being enemies. Since k = 3 is clearly not a good fit for the sample dataset, the mean matrix reflects that through higher instability in the matrix.
 
 ## Score Construction
 
@@ -933,7 +933,7 @@ $$
 \end{aligned}
 $$
 
-where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all $m$ resample matrices. We define the 'mean matrix' to be the $\bar{p}$ matrix. The 'mean matrix' function used in the algorithm is available in Appendix B, while the score calculation using this matrix is available in Appendix C.
+where $\bar{p}_{ij}$ is the average of the $p_{ij}$ values over all $m$ resample matrices. We define the "mean matrix" to be the $\bar{p}$ matrix. The "mean matrix" function used in the algorithm is available in Appendix B, while the score calculation using this matrix is available in Appendix C.
 
 The CRAB Score has a general tendency to increase depending on the sample size, $n$, which required us to take an average instead of the direct sum. This also allows us to compare CRAB Scores across datasets of different sizes since we now had a standardized score.
 
@@ -1131,7 +1131,7 @@ Not really any differences on the null distribution when the number of resamples
 
 ## Adj-CRAB Score
 
-The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The median CRAB score with respect to each cluster $k$ was then taken.
+The need to adjust the raw CRAB scores then becomes obvious; if the score through simulation displays monotonically decreasing behavior, then we should adjust any scores that we get as a function of the parameters of interest as necessary (n, resample proportion, k). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The sample size was set at 200 and the number of resamples set to 80. The median CRAB score with respect to each cluster $k$ was then taken.
 
 ```{r}
 #| label: adj-crab-score
@@ -1142,8 +1142,6 @@ fitted_curve <- lm(mean ~ k + k_2 + k_3 + k_4, data = adj_crab |>
                      mutate(k_2 = k^2,
                             k_3 = k^3,
                             k_4 = k^4))
-fitted_curve$fitted.values
-
 adj_crab |> 
   ggplot(aes(k, mean)) +
   geom_point() +
@@ -1151,15 +1149,17 @@ adj_crab |>
   theme_bw()
 ```
 
-TODO
+A quartic regression was fit to approximate the simulated data, the fitted values of which are used throughout this thesis in order to adjust the raw CRAB scores. This simulation and approximate fitted curve has a few caveats; in previous simulations we showed that the distribution of 
 
 # Conclusion
 
-TODO
+The CRAB algorithm is a viable alternative to other methods used to identify the number of clusters in a given dataset such as the elbow method and the Silhouette Score. 
 
 ## Results
 
-TODO
+On both simulated and real-world dataets the CRAB algorithm produces acceptable results where the number of true clusters is known beforehand. Although extensive testing and tuning is still needed in order to adjust the raw CRAB scores outputted by the algorithm, the current state of the algorithm has been shown to be a possible alternative to current existing methods. When comparing directly to the elbow method, utilizing the CRAB algorithm provides a few direct positives. First, compared to the ambiguous nature of the elbow method, the distribution of CRAB scores provides a more objective way to find the ideal number of clusters (finding the minimum adjusted-CRAB score over the range of $k$ candidate values). Compared to the ambiguous nature of the "elbow", 
+
+The distribution
 
 ## Limitations and Future Work
 

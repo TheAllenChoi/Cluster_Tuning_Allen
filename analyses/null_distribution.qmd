@@ -57,6 +57,30 @@ write_csv(end_result,
           file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 ```
 
+## Simulation Based Ratios
+
+```{r}
+end_result <- read_csv(here::here("analyses/null_distribution_data/null_test_1.csv"))
+cluster_2_mean <- end_result |>
+  filter(n == 200,
+         n_resamples == 80) |>
+  group_by(k) |>
+  summarize(mean = mean(res)) |>
+  filter(k == 2) |>
+  pull(mean)
+
+simulation_based_ratio <- end_result |>
+  filter(n == 200,
+         n_resamples == 80) |> 
+  group_by(k) |>
+  summarize(mean = mean(res)) |>
+  mutate(cluster_2_mean / mean)
+
+
+write_csv(simulation_based_ratio,
+          file = here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
+```
+
 ## Test 2
 ```{r}
 tic()
