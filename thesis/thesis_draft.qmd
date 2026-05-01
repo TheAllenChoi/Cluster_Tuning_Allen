@@ -123,9 +123,12 @@ Using this data, we used k-Means clustering across a set of candidate k cluster 
 
 bind_rows(res) |> 
   ggplot(aes(x = k, y = WCSS)) +
-  geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
-  geom_vline(xintercept = 3, color = "red", alpha = 0.3) +
-  geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
+  geom_vline(xintercept = 2, color = "lightgreen", size = 1,
+             linetype = "dashed") +
+  geom_vline(xintercept = 3, color = "lightgreen", size = 1,
+             linetype = "dashed") +
+  geom_vline(xintercept = 4, color = "lightgreen", size = 1,
+             linetype = "dashed") +
   geom_point() +
   geom_line() +
   scale_x_continuous(breaks = 1:10) +
@@ -155,14 +158,16 @@ Averaging this score gives a measure of how well a certain number of clusters fi
 
 bind_rows(res) |> 
   ggplot(aes(x = k, y = Silhouette)) +
-    geom_vline(xintercept = 2, color = "red", alpha = 0.3) +
-  geom_vline(xintercept = 4, color = "red", alpha = 0.3) +
+    geom_vline(xintercept = 2, color = "lightgreen", size = 1,
+               linetype = "dashed") +
+  geom_vline(xintercept = 4, color = "lightgreen", size = 1,
+             linetype = "dashed") +
   geom_point() +
   geom_line() +
   scale_x_continuous(breaks = 1:10) +
   theme_bw() +
-  ggtitle("Silhouette Score vs. k") +
-  theme(panel.grid.minor.x = element_blank())
+  theme(panel.grid.minor.x = element_blank()) +
+  ylab("Silhouette Scores")
 ```
 
 When looking at the Silhouette Scores on the same example dataset where the elbow method was used, we see that the Silhouette Score are highest for $k = 2$ and next-highest for $k = 4$, indicating that the optimal number of clusters is 2 or 4 for this dataset. Since we know beforehand that the data is distributed from three gamma distributions, this answer is not "correct".
@@ -251,8 +256,11 @@ rbind.data.frame(iris_1, iris_2, iris_3) |>
   geom_point() +
   facet_grid(~ Resample) +
   theme_bw() +
-  theme(legend.position = "bottom") +
-  labs(color = "Cluster")
+  theme(legend.position = "bottom",
+        panel.grid.minor = element_blank()) +
+  labs(color = "Cluster",
+       x = "Petal Length",
+       y = "Petal Width")
 ```
 
 As seen in the above figure, even with random resamples, the general location of the clusters are similar. More importantly, though, is the fact that observations that are in the same cluster tend to stay in the same cluster, given that there is a clear clustering structure observable.
@@ -310,8 +318,11 @@ rbind.data.frame(random_norm_1, random_norm_2, random_norm_3) |>
   geom_point() +
   facet_grid(~ Resample) +
   theme_bw() +
-  theme(legend.position = "bottom") +
-  labs(color = "Cluster")
+  theme(legend.position = "bottom",
+        panel.grid.minor = element_blank()) +
+  labs(color = "Cluster",
+       x = "X",
+       y = "Y")
 ```
 
 As seen in the plot above, when the clustering structure is not clearly identifiable through k-Means, the clustering assignments outputted from k-Means tends to be significantly different from resample to resample. This is in contrast to the iris dataset example above with three 60% resamples; the clustering assignments tend to be similar even after the resampling procedure was completed.
@@ -379,7 +390,9 @@ data_1 |>
              size = 3.25,
              fill = "lightblue",
              label.padding = unit(0.4, "lines")) +
-  labs(color = "Cluster")
+  labs(color = "Cluster",
+       x = "X",
+       y = "Y")
 ```
 
 Due to the relative closeness of these two points, we see that any given resample should have these two points in the same cluster even across many resamples.
@@ -421,7 +434,9 @@ data_2 |>
              size = 3.25,
              fill = "pink",
              label.padding = unit(0.4, "lines")) +
-  labs(color = "Cluster")
+  labs(color = "Cluster",
+       x = "X",
+       y = "Y")
 ```
 
 Due to the relative far distance of these two points, we saw that any given resample would have these two points in the different cluster even across many resamples. From here, we derived the main idea our algorithm is based off of: across resamples the pairwise relationship between observations should be consistently either "buddies" or "enemies", but not both.
@@ -481,7 +496,9 @@ rbind(s1, s2, s3, s4) |>
   theme_bw() +
   facet_wrap(~S) +
   geom_point(size = 0.05) +
-  theme(panel.grid = element_blank())
+  theme(panel.grid = element_blank()) +
+  labs(x = "X",
+       y = "Y")
   
 ```
 
@@ -494,10 +511,10 @@ We took 50% random points from the dataset due to computation limits. As seen in
 #| fig-cap: "Distribution of adj-CRAB scores across k = 2 through k = 30. The true number of clusters is 15."
 
 read_csv("data/S_CRAB_RESULT.csv") |> 
-  mutate(S_test = factor(S_test)) |> 
-  ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
+  mutate(`S-set` = factor(S_test)) |> 
+  ggplot(aes(x = k, y = adj_crab, color = `S-set`, group = `S-set`)) +
   geom_line(linewidth = 0.8) +
-  geom_point(aes(shape = S_test)) +
+  geom_point(aes(shape = `S-set`)) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
@@ -528,7 +545,9 @@ read_csv("data/S_CRAB_RESULT.csv") |>
              color = "black",
              size = 3.25,
              fill = "lightblue",
-             label.padding = unit(0.4, "lines"))
+             label.padding = unit(0.4, "lines")) +
+  labs(x = "Number of Clusters (k)",
+       y = "Adjusted-CRAB Scores")
 
 # read_csv("data/S_CRAB_RESULT.csv") |> 
 #   group_by(S_test) |> 
@@ -547,10 +566,10 @@ When running the CRAB algorithm across all these datasets, we see that the CRAB 
 read_csv("data/S_CRAB_RESULT.csv") |> 
   filter(k >= 8,
          k <= 20) |> 
-  mutate(S_test = factor(S_test)) |> 
-  ggplot(aes(x = k, y = adj_crab, color = S_test, group = S_test)) +
+  mutate(`S-set` = factor(S_test)) |> 
+  ggplot(aes(x = k, y = adj_crab, color = `S-set`, group = `S-set`)) +
   geom_line(linewidth = 0.8) +
-  geom_point(aes(shape = S_test)) +
+  geom_point(aes(shape = `S-set`)) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
@@ -581,7 +600,9 @@ read_csv("data/S_CRAB_RESULT.csv") |>
              label.padding = unit(0.4, "lines")) +
   scale_x_continuous(breaks = seq(2, 30, 1)) +
   theme(panel.grid.minor.x = element_blank()) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(x = "Number of Clusters (k)",
+       y = "Adjusted-CRAB Scores")
 
 # read_csv("data/S_CRAB_RESULT.csv") |>
 #     filter(k >= 8,
@@ -631,7 +652,10 @@ data <- data.frame(rbind(
 
 ggplot(data, aes(X1, X2)) +
   geom_point() +
-  theme_bw()
+  theme_bw() +
+  labs(x = "X",
+       y = "Y") +
+  theme(panel.grid.minor = element_blank())
 
 adj <- data.frame(k = 2:30,
            adj_factor = fitted_curve$fitted.values)
@@ -657,7 +681,12 @@ crab_data |>
   geom_line() +
   theme_bw() +
   geom_vline(xintercept = 4,
-             linetype = "dashed")
+             linetype = "dashed",
+             size = 1) +
+  labs(x = "Number of Clusters (k)",
+       y = "Adjusted-CRAB Score") +
+  scale_x_continuous(breaks = 2:10) +
+  theme(panel.grid.minor = element_blank())
 ```
 
 On this dataset we see that the CRAB algorithm works extremely well, correctly identifying the number of clusters in the dataset at 4. Barring $k = 3$, all other options are not close to being chosen as a candidate.
@@ -672,7 +701,7 @@ We used the **bill_length** variable as well as the **flipper_len** variable fro
 #| label: penguins-example-temp
 #| echo: false
 #| warning: false
-#| fig-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations with different starting seeds)"
+#| fig-cap: "Distribution of Adj-CRAB Scores over Number of Clusters (k) (30 Simulations with different starting seeds)"
 
 penguins_processed <- read_csv(here::here("analyses/penguins_data/penguins_cRab.csv"))
 null <- read_csv(here::here("analyses/null_distribution_data/simulation_based_ratio.csv"))
@@ -684,7 +713,7 @@ penguins_processed |>
   ggplot(aes(x = factor(k, ordered = T), y = adj_crab, group = run)) +
   geom_line() +
   theme_bw() +
-  labs(x = "k-Clusters",
+  labs(x = "Number of Clusters (k)",
        y = "Adj-CRAB Scores")
 ```
 
@@ -693,7 +722,7 @@ To test whether any results we find with the CRAB algorithm is dependent on the 
 ```{r}
 #| label: penguins-example-temp-table
 #| echo: false
-#| tbl-cap: "Distribution of Adj-CRAB Scores over k-Clusters (30 Simulations per Cluster)"
+#| tbl-cap: "Distribution of Adj-CRAB Scores over Number of Clusters (k) (30 Simulations per Cluster)"
 
 penguins_processed |> 
   filter(k < 11) |> 
@@ -753,7 +782,10 @@ data <- data.frame(rbind(
 data |> 
   ggplot(aes(x = X1, y = X2)) +
   geom_point() +
-  theme_bw()
+  theme_bw() +
+  theme(panel.grid.minor = element_blank()) +
+  labs(x = "X",
+       y = "Y")
 ```
 
 Although the cluster assignments have been removed, we see that there are still distinctly two clusters in this dataset. The full mean matrix that is calculated after collapsing the resample matrices is shown below.
@@ -779,7 +811,11 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 4
   scale_color_distiller(type = "div",
                         palette = "Spectral",
                         aesthetics = "fill") +
-  theme_bw()
+  theme_bw() +
+  labs(fill = "Mean Matrix Value") +
+  theme(legend.position = "bottom",
+        panel.grid = element_blank()) +
+  coord_fixed()
 ```
 
 On the heatmap, values $(i, j)$ denote the average $(i, j)$ resample matrix values, excluding NA values where either points did not appear in the dataset. The gray values are removed because the matrix is symmetrical. Points that have values that are closer to "1" can be interpreted as being "buddies", or in the same cluster, on average. Points that have values that are closer to 
@@ -808,7 +844,11 @@ mean_matrix(resample_function(data, formula = ~ X1 + X2, number_of_resamples = 4
   scale_color_distiller(type = "div",
                         palette = "Spectral",
                         aesthetics = "fill") +
-  theme_bw()
+  theme_bw() +
+  labs(fill = "Mean Matrix Value") +
+  theme(legend.position = "bottom",
+        panel.grid = element_blank()) +
+  coord_fixed()
 ```
 
 When running the CRAB algorithm with k = 3 clusters inputted, the composition of the mean matrix is significantly different compared to the previous example with k = 2. The values in the mean matrix that are close to "0" demonstrate point pairwise relationships that switch between being buddies and being enemies. Since k = 3 is clearly not a good fit for the sample dataset, the mean matrix reflects that through higher instability in the matrix.
@@ -835,7 +875,9 @@ temp_data |>
   theme_bw() +
   xlab("Standardized Bill Length") +
   ylab("Standardized Flipper Length") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(color = "Species") +
+  theme(panel.grid.minor = element_blank())
 ```
 
 For the purposes of designing the scoring algorithm, we used this penguins dataset with the three "known" clusters in order to fine-tune the behavior of the scores. Ideally a scoring algorithm would output a higher score (worse) when the number of clusters input into the algorithm is not equal to three; the ideal output of the scoring algorithm when the number of clusters, $k$, is equal to 3 would be the minimum score over all $k$ candidate cluster values.
@@ -866,7 +908,10 @@ data.frame(X = temp_vec) |>
                      limits = c(-1, 1)) +
   scale_y_continuous(breaks = seq(0, 100, 20),
                      limits = c(0, 100)) +
-  theme_bw()
+  theme_bw() +
+  theme(panel.grid.minor = element_blank()) +
+  labs(x = "Mean Matrix Values",
+       y = "Count")
 ```
 
 ```{r}
@@ -894,7 +939,10 @@ data.frame(X = temp_vec) |>
                      limits = c(-1, 1)) +
   scale_y_continuous(breaks = seq(0, 100, 20),
                      limits = c(0, 100)) +
-  theme_bw()
+  theme_bw() +
+  theme(panel.grid.minor = element_blank()) +
+  labs(x = "Mean Matrix Values",
+       y = "Count")
 ```
 
 We see that from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
@@ -942,7 +990,10 @@ efficiency_results |>
   geom_point() +
   theme_bw() +
   xlab("Number of Observations") +
-  ylab("Seconds (Median)")
+  ylab("Seconds (Median)") +
+  theme(panel.grid.minor = element_blank()) +
+  scale_y_continuous(breaks = seq(0, 2, 0.25),
+                     limits = c(0, 1.5))
 ```
 
 As for memory scaling, due to the fact that $m$ total $n \times n$ resample matrices are constructed, we can also expect memory usage to scale quadratically with respect to the number of observations, regardless of the clustering algorithm used. For this experiment, we hold constant the number of clusters $k$ at 3 as well as hold the number of resamples to be 50, after which we vary the number of dimensions (p) and the number of observations (n); in actuality to compare the viability of each k the CRAB algorithm would need to be run k times, so once for each k of interest. The full details and code of the implementation are available on the GitHub repository under **analyses/speed_memory_scaling.qmd**.
@@ -959,7 +1010,10 @@ efficiency_results |>
   geom_point() +
   theme_bw() +
   xlab("Number of Observations") +
-  ylab("Memory Allocated (MB)")
+  ylab("Memory Allocated (MB)") +
+  theme(panel.grid.minor = element_blank()) +
+  scale_y_continuous(breaks = seq(0, 2000, 250),
+                     limits = c(0, 2000))
 ```
 
 This, of course, is not ideal, but does guide possible future work improving the algorithm. At a large $n$ the resample matrices become extremely sparse, leading to possible memory savings if treated as such. However, the fact remains that the algorithm relies on the storage of all $m$ resample matrices in some capacity.
@@ -1013,7 +1067,10 @@ efficiency_results |>
   geom_point() +
   theme_bw() +
   xlab("Number of Dimensions") +
-  ylab("Seconds (Median)")
+  ylab("Seconds (Median)") +
+  theme(panel.grid.minor.x = element_blank()) +
+  scale_y_continuous(breaks = seq(0, 6, 1),
+                     limits = c(0, 6))
 ```
 
 This is verified through simulation where running the CRAB algorithm on increasing $p$ dimensions only scales the time linearly with respect to $p$. The k-Means algorithm has a space complexity of $O((n + k) \cdot p)$, where p is the number of dimensions of the dataset [@ikotun_k-means_2023]. If we hold $n$ and $k$ to be constant, we would also expect the algorithm to scale linearly in terms of time in respect to the number of dimensions $p$.
@@ -1029,20 +1086,21 @@ efficiency_results |>
   geom_point() +
   theme_bw() +
   xlab("Number of Dimensions") +
-  ylab("Memory Allocated (MB)")
+  ylab("Memory Allocated (MB)") +
+  theme(panel.grid.minor.x = element_blank()) +
+  scale_y_continuous(breaks = seq(15, 23, 2),
+                     limits = c(15, 23))
 ```
 
 Through simulation, barring the anomalous behavior with a small number of dimensions, the expected memory usage almost exactly follows this behavior where the memory allocation increases linearly with respect to $p$ dimensions.
 
 # Null Distribution
 
-TODO: Beef up
+An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
 
 ## Null Distribution of Scores
 
-TODO: Beef up
-
-An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
+In order to verify whether this bias existed and correct it if necessary, the distribution of CRAB scores over many simulated datasets was needed. This was required to be repeated for a wide range and combination of different parameter values that could be input into the CRAB algorithm. This way, the bias could be corrected without knowledge of the user's parameter input and dataset specifics automatically by the algorithm.
 
 Our scores were adjusted depending on the behavior of the CRAB scores when there are in actuality no clusters (or equivalently if all points are in one large clsuter). Based off of this "null distribution", we adjusted our CRAB Scores to counteract the bias and downward trend in Scores.
 
@@ -1064,7 +1122,11 @@ end_result |>
   geom_boxplot() +
   theme_bw() +
   facet_wrap(~prop_resample) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(y = "Raw CRAB Scores",
+       x = "Number of Clusters (k)",
+       fill = "Resample Proportion") +
+  theme(panel.grid.minor.y = element_blank())
 ```
 We wanted to see the exact effects of the various parameters in the algorithm and their effects on the CRAB algorithm. To see this specifically, we ran simulations on random normally distributed data where there were no visible clusters. There were 100 simulation runs per cluster, with 100 resample matrices and n = 100 per sample. Datasets across resampling percentages were the same.
 
@@ -1086,7 +1148,11 @@ end_result |>
   ggplot(aes(x = k, y = Score, fill = p)) +
   geom_boxplot() +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(y = "Raw CRAB Scores",
+       x = "Number of Clusters (k)",
+       fill = "Number of Dimensions (p)") +
+  theme(panel.grid.minor.y = element_blank())
 ```
 
 When we examined the behavior of the CRAB algorithm as we scale the number of dimensions, we saw drastically different behavior in the distributions of CRAB Scores. Although it appears that as the number of clusters increases, the CRAB Scores in either case asymtotically level off, the behavior is significantly more right-skewed in the $p = 5$ case compared to the $p = 2$ case. Since we prefer a lower score when choosing the number of clusters, this suggested our algorithm biases for a higher number of clusters when the number of dimensions increases. The number of observations across these two datasets is kept constant at $n = 100$, which may also suggest the curse of dimensionality is contributing here as well. 
@@ -1098,7 +1164,7 @@ One of the most important properties to look into for the CRAB algorithm is how 
 ```{r}
 #| label: null-distribution-2
 #| echo: false
-#| fig-cap: "Distribution of scores on random p-dimensional normal distribution (proportion resample set to 80%)"
+#| fig-cap: "Distribution of scores on random p-dimensional normal distribution (proportion resample set to 80%) between 40 resamples and 80 resamples"
 
 end_result <- read.csv(file = here::here("analyses/null_distribution_data/null_test_1.csv"))
 
@@ -1112,7 +1178,11 @@ end_result |>
   geom_boxplot() +
   theme_bw() +
   facet_wrap(~n_resamples) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(y = "Raw CRAB Scores",
+       x = "Number of Clusters (k)",
+       fill = "Sample Size (n)") +
+  theme(panel.grid.minor.y = element_blank())
 ```
 Higher sample sizes seem to have asymptotically higher scores on average compared to lower sample sizes, though with smaller values of $k$ the datasets with smaller sample sizes return higher values of the CRAB score on average. Overall, however, there does not seem to be a drastic difference in behavior in terms of distributions between the various combinations of resample percentage and sample size. One slight outlier to this is the combination of the $n = 200$ and 80 resample matrices group, where the median scores per cluster seem to be more stable than the other combinations for lower values of $k$. 
 
@@ -1132,7 +1202,11 @@ end_result |>
   ggplot(aes(x = factor(k), y = Score, fill = factor(n_resamples))) +
   geom_boxplot() +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  labs(y = "Raw CRAB Scores",
+       x = "Number of Clusters (k)",
+       fill = "Number of Resamples") +
+  theme(panel.grid.minor.y = element_blank())
 ```
 
 When fixing the sample size at 200, we also wanted to observe the change in distributions in CRAB scores for each k in order to see if there is an optimal point at which adding more resample matrices does not help. Since every extra resample matrix requires running the unsupervised clustering algorithm on the dataset another time, it is beneficial in terms of both performance time and memory usage to minimize the number of resamples used. 
@@ -1154,9 +1228,15 @@ fitted_curve <- lm(mean ~ k + k_2 + k_3 + k_4, data = adj_crab |>
                             k_4 = k^4))
 adj_crab |> 
   ggplot(aes(k, mean)) +
+  geom_line(aes(x = k, y = fitted_curve$fitted.values),
+            color = "green3", size = 1.5) +
   geom_point() +
-  geom_line(aes(x = k, y = fitted_curve$fitted.values)) +
-  theme_bw()
+  theme_bw() +
+  scale_x_continuous(breaks = seq(2, 30, 4)) +
+  theme(panel.grid.minor = element_blank()) +
+  labs(x = "Number of Clusters (k)",
+       y = "Raw CRAB Scores")
+  
 ```
 
 A quartic regression was fit to approximate the simulated data, the fitted values of which are used throughout this thesis in order to adjust the raw CRAB scores. This simulation and approximate fitted curve has a few caveats; in previous simulations we showed that the distribution of "null CRAB scores" changes dramatically depending on the choice of $n$, resample proportion, number of resamples, and $k$. We would need to fit all different combinations of these parameters in order to adjust for any possible dataset that could be input into the algorithm. Due to computation constraints, only a single regression where $n = 200$, number of resamples = 80, and resample proportion = 0.8 was used. 
