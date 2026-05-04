@@ -514,7 +514,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   mutate(`S-set` = factor(S_test)) |> 
   ggplot(aes(x = k, y = adj_crab, color = `S-set`, group = `S-set`)) +
   geom_line(linewidth = 0.8) +
-  geom_point(aes(shape = `S-set`)) +
+  geom_point(aes(shape = `S-set`), size = 2) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
@@ -533,7 +533,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
              linetype = "dashed")  +
   geom_vline(xintercept = 4,
              linewidth = 0.8,
-             color = "blue",
+             color = "cyan3",
              linetype = "dotted") +
   geom_vline(xintercept = 16,
              linewidth = 0.8,
@@ -557,6 +557,8 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 
 When running the CRAB algorithm across all these datasets, we see that the CRAB algorithm does not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it gets extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. This seems to suggest that there is something inherent in those datasets specifically because the algorithm run on S1 and S4 does not have identical behavior. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
 
+The dip in the adjusted-CRAB score at $k = 2$ and $k = 4$ for S3 and just at $k = 4$ for S2 can also be due to the inherent nature of two-dimensional datasets like the S-sets. Since there are only so many degrees of freedom cluster assignments can have in two dimensions at lower number of clusters (dividing a dataset in half or dividing a dataset into quarters) this could be a possible explanation for the dip at those values of $k$. It is also possible that the local minima when using the k-Means algorithm for S3 and S4 is unusually stable at certain locations in the respective datasets at those cluster values.
+
 ```{r}
 #| label: in-progress-4
 #| echo: false
@@ -569,27 +571,32 @@ read_csv("data/S_CRAB_RESULT.csv") |>
   mutate(`S-set` = factor(S_test)) |> 
   ggplot(aes(x = k, y = adj_crab, color = `S-set`, group = `S-set`)) +
   geom_line(linewidth = 0.8) +
-  geom_point(aes(shape = `S-set`)) +
+  geom_point(aes(shape = `S-set`), size = 2) +
   theme_bw() +
   geom_vline(xintercept = 15,
              linewidth = 0.8,
              color = "black",
+             size = 2,
              linetype = "dashed") +
   geom_vline(xintercept = 18,
              linewidth = 0.8,
              color = "red",
+             size = 2,
              linetype = "dotted") +
   geom_vline(xintercept = 18,
              linewidth = 0.8,
              color = "lightgreen",
+             size = 2,
              linetype = "dashed")  +
   geom_vline(xintercept = 17,
              linewidth = 0.8,
-             color = "blue",
+             color = "cyan3",
+             size = 2,
              linetype = "dashed") +
   geom_vline(xintercept = 16,
              linewidth = 0.8,
              color = "purple",
+             size = 2,
              linetype = "dashed") +
   geom_label(label = "True k = 15",
              x = 15,
@@ -612,6 +619,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 #   filter(adj_crab == min)
 
 ```
+
 When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all datasets, we get a predicted cluster number of 18, 18, 17, and 16 across the S1, S2, S3, and S4 datasets respectively. Interestingly, the algorithm seems to have consistent performance across the datasets even as the overlap between clusters increases.
 
 ### Random Normal Data
@@ -729,15 +737,15 @@ penguins_processed |>
   left_join(null, by = "k") |> 
   mutate(adj_crab = CRAB * `cluster_2_mean/mean`) |>
   group_by(k) |> 
-  summarize(`Average adj_crab` = mean(adj_crab)) |> 
+  summarize(`Average Adjusted CRAB Score` = round(mean(adj_crab), 3)) |> 
   kable()
 ```
 
-We see that across the 30 random seeds intializing the CRAB algorithm, the average adjusted CRAB Score is lowest for $k = 3$ compared to the other values of $k$ for the penguins dataset.
+We saw that across the 30 random seeds intializing the CRAB algorithm, the average adjusted CRAB Score was lowest for $k = 3$ at a value of $0.001$ compared to the other values of $k$ for the penguins dataset. The next closest candidate was $k = 2$, which in terms of an absolute difference of only 0.006 in the adjusted CRAB Score; this however was around 7 times higher than the average adjusted CRAB score for $k = 3$. 
 
 # Computational Details
 
-In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score. Full details on the implementation details, code, and documentation can be found on the GitHub repository here: https://github.com/TheAllenChoi/Cluster_Tuning_Allen. 
+In this section we go further into detail the implementation of the CRAB algorithm as well as the underlying structures that go into the computation of the CRAB Score. Full details on the implementation details, code, and documentation can be found on the GitHub repository here: https://github.com/TheAllenChoi/Cluster_Tuning_Allen. The actual functions and code used can also be found in the Appendix.
 
 ## Matrix Stacking
 
@@ -965,7 +973,7 @@ The CRAB Score has a general tendency to increase depending on the sample size, 
 
 ## Speed and Memory Scaling
 
-TODO: Explain Why important for speed and memory scaling.
+Besides whether or not the CRAB algorithm works, the speed and time complexity of the algorithm is also extremely important; there is no point in an algorithm that produces the correct number of clusters if it takes too much time or memory. We investigated this behavior of the CRAB algorithm through both a theoretical and simulation-based lens in order to get an estimate of how it will perform on data of various sizes.
 
 ### Scaling with the Number of Observations
 
