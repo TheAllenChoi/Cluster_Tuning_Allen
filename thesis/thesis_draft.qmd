@@ -48,7 +48,7 @@ source(here::here("functions.R"))
 
 ## Motivation
 
-Unsupervised clustering algorithms are commonly used today when attempting to classify observations in groups where the observation's membership or the number of groups is not known beforehand. Clustering is useful when attempting to get an overview of groups across a dataset, which provides insight into which data points are most similar to other data points. This can provide implicit signals into common traits shared by observations in the same group, which is valuable across a wide range of fields such as biology [@nugent_overview_2010], engineering [@ababneh_energy_2025], health education [@roper_complex_2023], physiology [@bird_unsupervised_2022], and industry [@john_exploration_2023].
+Unsupervised clustering algorithms are commonly used today when attempting to classify observations in groups where the observation's membership or the number of groups is not known beforehand. Clustering is useful when attempting to obtain an overview of groups across a dataset, which provides insight into which data points are most similar to other data points. This can provide implicit signals into common traits shared by observations in the same group, which is valuable across a wide range of fields such as biology [@nugent_overview_2010], engineering [@ababneh_energy_2025], health education [@roper_complex_2023], physiology [@bird_unsupervised_2022], and industry [@john_exploration_2023].
 
 One of the main difficulties associated with unsupervised clustering is due to the fact that the number of clusters or groupings in the dataset is not known beforehand. This can be circumvented through the use of domain knowledge, but even in situations with no prior knowledge there still exist methods to estimate the optimal number of groups. Methods such as the elbow method and Silhouette score [@kodinariya_review_2013] are commonly used to compare multiple candidate values of k over a range to obtain a specific "best-guess" of this optimal value. However, even with these methods there are often disagreements and caveats that we will further explore. In this thesis we introduce a novel method for determining the optimal number of clusters using a resampling-based approach over many subsamples of a dataset.
 
@@ -136,7 +136,7 @@ bind_rows(res) |>
   theme(panel.grid.minor.x = element_blank())
 ```
 
-As seen in the plot above, there exists no obvious "elbow" at which point the decrease in WCSS changes dramatically; any choice of k between 2 and 4 is a justifiable answer, which makes the ideal choice of k ambiguous.
+As seen in the plot above, there exists no obvious "elbow" at which point the decrease in WCSS changes dramatically; any choice of k between 2 and 4 was a justifiable answer, which makes the ideal choice of k ambiguous.
 
 ### Silhouette Score
 
@@ -170,7 +170,7 @@ bind_rows(res) |>
   ylab("Silhouette Scores")
 ```
 
-When looking at the Silhouette Scores on the same example dataset where the elbow method was used, we see that the Silhouette Score are highest for $k = 2$ and next-highest for $k = 4$, indicating that the optimal number of clusters is 2 or 4 for this dataset. Since we know beforehand that the data is distributed from three gamma distributions, this answer is not "correct".
+When looking at the Silhouette Scores on the same example dataset where the elbow method was used, we saw that the Silhouette Score are highest for $k = 2$ and next-highest for $k = 4$, indicating that the optimal number of clusters was 2 or 4 for this dataset. Since we know beforehand that the data was distributed from three gamma distributions, this answer is not "correct".
 
 ## Overview of k-Means Clustering
 
@@ -395,7 +395,7 @@ data_1 |>
        y = "Y")
 ```
 
-Due to the relative closeness of these two points, we see that any given resample should have these two points in the same cluster even across many resamples.
+Due to the relative closeness of these two points, we saw that any given resample should have these two points in the same cluster even across many resamples.
 
 ```{r}
 #| label: enemies-example
@@ -555,7 +555,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 #   filter(adj_crab == min)
 ```
 
-When running the CRAB algorithm across all these datasets, we see that the CRAB algorithm does not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it gets extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. This seems to suggest that there is something inherent in those datasets specifically because the algorithm run on S1 and S4 does not have identical behavior. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
+When running the CRAB algorithm across all these datasets, we saw that the CRAB algorithm did not perfectly predict the number of clusters on any of the datasets. However, for datasets S1 and S4 it was extremely close at 18 and 16 predicted clusters, respectively. For S2 and S3 the minimum CRAB score occurs at k = 4, which is extremely different from the true number of clusters at 15. This seems to suggest that there is something inherent in those datasets specifically because the algorithm run on S1 and S4 does not have identical behavior. Barring this, however, all four trends of adjusted CRAB scores at least appear to have a dip at or near the true number of clusters at 15. It is possible that changing out clustering algorithm or running the algorithm on the full dataset instead of the dataset with 50% of observations will improve performance.
 
 The dip in the adjusted-CRAB score at $k = 2$ and $k = 4$ for S3 and just at $k = 4$ for S2 can also be due to the inherent nature of two-dimensional datasets like the S-sets. Since there are only so many degrees of freedom cluster assignments can have in two dimensions at lower number of clusters (dividing a dataset in half or dividing a dataset into quarters) this could be a possible explanation for the dip at those values of $k$. It is also possible that the local minima when using the k-Means algorithm for S3 and S4 is unusually stable at certain locations in the respective datasets at those cluster values.
 
@@ -620,7 +620,7 @@ read_csv("data/S_CRAB_RESULT.csv") |>
 
 ```
 
-When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all datasets, we get a predicted cluster number of 18, 18, 17, and 16 across the S1, S2, S3, and S4 datasets respectively. Interestingly, the algorithm seems to have consistent performance across the datasets even as the overlap between clusters increases.
+When ignoring the candidate cluster values before 8, the results look significantly more promising. Across all datasets, we obtained a predicted cluster number of 18, 18, 17, and 16 across the S1, S2, S3, and S4 datasets respectively. Interestingly, the algorithm seems to have consistent performance across the datasets even as the overlap between clusters increases.
 
 ### Random Normal Data
 
@@ -697,7 +697,7 @@ crab_data |>
   theme(panel.grid.minor = element_blank())
 ```
 
-On this dataset we see that the CRAB algorithm works extremely well, correctly identifying the number of clusters in the dataset at 4. Barring $k = 3$, all other options are not close to being chosen as a candidate.
+On this dataset we saw that the CRAB algorithm works extremely well, correctly identifying the number of clusters in the dataset at 4. Barring $k = 3$, all other options are not close to being chosen as a candidate.
 
 ## Performance on penguins dataset
 
@@ -725,7 +725,7 @@ penguins_processed |>
        y = "Adj-CRAB Scores")
 ```
 
-To test whether any results we find with the CRAB algorithm is dependent on the starting seed, we ran the CRAB algorithm 30 times on the same penguins dataset, randomly changing the seed each time. We see from the graph that the dip at $k = 3$ and the subsequent increase in the adjusted CRAB score at $k = 4$ is consistent across all starting values of the seed, suggesting that there is little variability between scores within each k, at least with the parameters used for this simulation.
+To test whether any results we find with the CRAB algorithm is dependent on the starting seed, we ran the CRAB algorithm 30 times on the same penguins dataset, randomly changing the seed each time. We saw from the graph that the dip at $k = 3$ and the subsequent increase in the adjusted CRAB score at $k = 4$ is consistent across all starting values of the seed, suggesting that there is little variability between scores within each k, at least with the parameters used for this simulation.
 
 ```{r}
 #| label: penguins-example-temp-table
@@ -796,7 +796,7 @@ data |>
        y = "Y")
 ```
 
-Although the cluster assignments have been removed, we see that there are still distinctly two clusters in this dataset. The full mean matrix that is calculated after collapsing the resample matrices is shown below.
+Although the cluster assignments have been removed, we saw that there were still distinctly two clusters in this dataset. The full mean matrix that is calculated after collapsing the resample matrices is shown below.
 
 ```{r}
 #| label: buddies-example2
@@ -953,7 +953,7 @@ data.frame(X = temp_vec) |>
        y = "Count")
 ```
 
-We see that from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
+We saw from Figure 3.2 and Figure 3.3 that the distribution of values inside the mean matrix changes depending on the number of clusters set beforehand in the K-Means algorithm, albeit slightly. For k = 2, there are a small number of points around the value of 0, which indicates that these specific points are ones who are changing "allegiances" often, meaning that they switch from being "buddies" (being in the same cluster) and to being "rivals" (not being in the same cluster).
 
 To incorporate all of this information, our algorithm heavily penalized points that constantly change allegiances and not penalize points that are consistent (whether consistently rivals or consistently buddies). Pairs of observations that are consistently in the same cluster would have an average $p_{ij}$ value of 1 or close, and pairs of observations that are consistently not in the same cluster would have an average $p_{ij}$ value of -1 or close. Then, pairs of observations that switch allegiances would have $p_{ij}$ values close to 0.
 
@@ -973,7 +973,7 @@ The CRAB Score has a general tendency to increase depending on the sample size, 
 
 ## Speed and Memory Scaling
 
-Besides whether or not the CRAB algorithm works, the speed and time complexity of the algorithm is also extremely important; there is no point in an algorithm that produces the correct number of clusters if it takes too much time or memory. We investigated this behavior of the CRAB algorithm through both a theoretical and simulation-based lens in order to get an estimate of how it will perform on data of various sizes.
+Besides whether or not the CRAB algorithm works, the speed and time complexity of the algorithm is also extremely important; there is no point in an algorithm that produces the correct number of clusters if it takes too much time or memory. We investigated this behavior of the CRAB algorithm through both a theoretical and simulation-based lens in order to obtain an estimate of how it will perform on data of various sizes.
 
 ### Scaling with the Number of Observations
 
@@ -1104,7 +1104,7 @@ Through simulation, barring the anomalous behavior with a small number of dimens
 
 # Null Distribution
 
-An important question in the construction of a score describing the optimal number of clusters is its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
+An important question in the construction of a score describing the optimal number of clusters was its behavior under a null condition: behavior when no clusters are present. Any anomalous behavior here where the scores trend in either an upward or downward direction is problematic; this suggests a bias in either direction when the algorithm is ran on data where clustering behavior does exist.
 
 ## Null Distribution of Scores
 
@@ -1138,7 +1138,7 @@ end_result |>
 ```
 We wanted to see the exact effects of the various parameters in the algorithm and their effects on the CRAB algorithm. To see this specifically, we ran simulations on random normally distributed data where there were no visible clusters. There were 100 simulation runs per cluster, with 100 resample matrices and n = 100 per sample. Datasets across resampling percentages were the same.
 
-We see in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. Interestingly, the variability of the scores seemed to decrease overall on average when holding the number of clusters and sample size constant. This suggests that the resample percentage parameter has a significant impact on the end result of the algorithm, although more work needs to be done on how exactly this affects the results of the CRAB algorithm on datasets where clusters exist.
+We saw in the above figure that the resample proportion has a significant impact on the distribution of scores, where the variability and mean of scores over many simulation runs is dependent on the resample proportion. Interestingly, the variability of the scores seemed to decrease overall on average when holding the number of clusters and sample size constant. This suggests that the resample percentage parameter has a significant impact on the end result of the algorithm, although more work needs to be done on how exactly this affects the results of the CRAB algorithm on datasets where clusters exist.
 
 More details regarding the simulation can be found in **analyses/resampling_percentage.qmd**.
 
@@ -1163,11 +1163,11 @@ end_result |>
   theme(panel.grid.minor.y = element_blank())
 ```
 
-When we examined the behavior of the CRAB algorithm as we scale the number of dimensions, we saw drastically different behavior in the distributions of CRAB Scores. Although it appears that as the number of clusters increases, the CRAB Scores in either case asymtotically level off, the behavior is significantly more right-skewed in the $p = 5$ case compared to the $p = 2$ case. Since we prefer a lower score when choosing the number of clusters, this suggested our algorithm biases for a higher number of clusters when the number of dimensions increases. The number of observations across these two datasets is kept constant at $n = 100$, which may also suggest the curse of dimensionality is contributing here as well. 
+When we examined the behavior of the CRAB algorithm as we scale the number of dimensions, we saw drastically different behavior in the distributions of CRAB Scores. Although it appeared that as the number of clusters increases, the CRAB Scores in either case asymtotically level off, the behavior was significantly more right-skewed in the $p = 5$ case compared to the $p = 2$ case. Since we preferred a lower score when choosing the number of clusters, this suggested our algorithm biases for a higher number of clusters when the number of dimensions increases. The number of observations across these two datasets is kept constant at $n = 100$, which may also suggest the curse of dimensionality is contributing here as well. 
 
 ## Null Distribution over Change in Number of Observations
 
-One of the most important properties to look into for the CRAB algorithm is how it performs under varying dataset sizes $n$. Since real-world datasets can range from as few as a couple observations to thousands or millions of observations, it is important to make sure the performance and behavior of the algorithm stays consistent with varying $n$. Of particular interest was this behavior on datasets with no clusters; differing null distributions suggest a bias in either direction as sample size changes.
+One of the most important properties we wanted to look into for the CRAB algorithm was how it performed under varying dataset sizes $n$. Since real-world datasets can range from as few as a couple observations to thousands or millions of observations, it was important to make sure the performance and behavior of the algorithm stayed consistent with varying $n$. Of particular interest was this behavior on datasets with no clusters; differing null distributions suggest a bias in either direction as sample size changes.
 
 ```{r}
 #| label: null-distribution-2
@@ -1217,13 +1217,13 @@ end_result |>
   theme(panel.grid.minor.y = element_blank())
 ```
 
-When fixing the sample size at 200, we also wanted to observe the change in distributions in CRAB scores for each k in order to see if there is an optimal point at which adding more resample matrices does not help. Since every extra resample matrix requires running the unsupervised clustering algorithm on the dataset another time, it is beneficial in terms of both performance time and memory usage to minimize the number of resamples used. 
+When fixing the sample size at 200, we also wanted to observe the change in distributions in CRAB scores for each k in order to see if there was an optimal point at which adding more resample matrices does not help. Since every extra resample matrix requires running the unsupervised clustering algorithm on the dataset another time, it was beneficial in terms of both performance time and memory usage to minimize the number of resamples used. 
 
-On the normally distributed null distributions, it appears that increasing the number of resamples does not change the behavior of the CRAB scores across values of $k$. This, of course, is for the null distributions specifically; it is very likely that the number of resamples has an effect on the distribution of scores if the simulations were instead on datasets with actual clusters.
+On the normally distributed null distributions, it appeared that increasing the number of resamples did not change the behavior of the CRAB scores across values of $k$. This, of course, was for the null distributions specifically; it was very likely that the number of resamples would have had an effect on the distribution of scores if the simulations were instead on datasets with actual clusters.
 
 ## Adj-CRAB Score
 
-Taking in all the behavior from the null distributions, the need to adjust the raw CRAB scores then becomes obvious; the distribution of scores through simulation displays monotonically decreasing behavior across all parameters tested as the number of clusters, $k$, increases. This guided our decision to adjust any scores that we get as a function of the parameters of interest as necessary ($n$, resample proportion, number of resamples, $k$). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The sample size was set at 200 and the number of resamples set to 80. The median CRAB score with respect to each cluster $k$ was then taken.
+Taking in all the behavior from the null distributions, the need to adjust the raw CRAB scores then becomes obvious; the distribution of scores through simulation displays monotonically decreasing behavior across all parameters tested as the number of clusters, $k$, increases. This guided our decision to adjust any scores that we obtain as a function of the parameters of interest as necessary ($n$, resample proportion, number of resamples, $k$). To find a good approximation of this, we ran 50 simulated 2-dimensional normal distribution datasets, and for each dataset ran the CRAB algorithm from 2 to 30 clusters. The sample size was set at 200 and the number of resamples set to 80. The median CRAB score with respect to each cluster $k$ was then taken.
 
 ```{r}
 #| label: adj-crab-score
@@ -1251,11 +1251,11 @@ A quartic regression was fit to approximate the simulated data, the fitted value
 
 # Conclusion
 
-The CRAB algorithm is a viable alternative to other methods used to identify the number of clusters in a given dataset such as the elbow method and the Silhouette Score. 
+The CRAB algorithm is a viable alternative to other methods used to identify the number of clusters in a given dataset such as the elbow method and the Silhouette Score. We validated the performance of the algorithm using a combination of real-world and simulated datasets while also exploring the performance of the algorithm under various scenarios.
 
 ## Results
 
-On both simulated and real-world dataets the CRAB algorithm produces acceptable results where the number of true clusters is known beforehand. Although extensive testing and tuning is still needed in order to adjust the raw CRAB scores outputted by the algorithm, the current state of the algorithm has been shown to be a possible alternative to current existing methods. When comparing directly to the elbow method and Silhouette Score, utilizing the CRAB algorithm provides a few direct positives. First, compared to the ambiguous nature of the elbow method, the distribution of CRAB scores provides a more objective way to find the ideal number of clusters (finding the minimum adjusted-CRAB score over the range of $k$ candidate values). Compared to the ambiguous nature of the "elbow", where especially for large $k$ the drop-off in WCSS is not visible, there will always be a $k$ in a dataset where the adjusted-CRAB score is smallest. Second, compared to either methods, the framework of the CRAB algorithm theoretically allows any unsupervised clustering algorithm to be used for evaluating a dataset. This allows significantly more flexibility for the algorithm to be used across a wider range of datasets.
+On both simulated and real-world datasets the CRAB algorithm produces acceptable results where the number of true clusters is known beforehand. Although extensive testing and tuning is still needed in order to adjust the raw CRAB scores outputted by the algorithm, the current state of the algorithm has been shown to be a possible alternative to current existing methods. When comparing directly to the elbow method and Silhouette Score, utilizing the CRAB algorithm provides a few direct positives. First, compared to the ambiguous nature of the elbow method, the distribution of CRAB scores provides a more objective way to find the ideal number of clusters (finding the minimum adjusted-CRAB score over the range of $k$ candidate values). Compared to the ambiguous nature of the "elbow", where especially for large $k$ the drop-off in WCSS is not visible, there will always be a $k$ in a dataset where the adjusted-CRAB score is smallest. Second, compared to either methods, the framework of the CRAB algorithm theoretically allows any unsupervised clustering algorithm to be used for evaluating a dataset. This allows significantly more flexibility for the algorithm to be used across a wider range of datasets.
 
 The distribution of null distributions of the raw CRAB score, or the performance of the algorithm on datasets with no clustering structure was also evaluated. This served two purposes: to evaluate the consistency of the CRAB scores across $k$ through a wide range of parameters, and to also adjust the CRAB scores to correct for the bias for higher $k$.
 
